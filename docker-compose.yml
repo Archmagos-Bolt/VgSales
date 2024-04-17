@@ -6,12 +6,15 @@ services:
       POSTGRES_DB: VgSLDB
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./datasets:/datasets
     ports:
       - "5432:5432"
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgres://root:admin@postgres:5432/VgSLDB
+      DATABASE_URL: postgres://postgres:admin@postgres:5432/VgSLDB
     ports:
       - "5000:5000"
     depends_on:
@@ -22,3 +25,5 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+volumes:
+  pgdata:
