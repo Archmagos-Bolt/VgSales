@@ -72,3 +72,17 @@ app.put('/games/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/reviews', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `Select sales.*, reviews.review_text, reviews.review_score, reviews.review_votes 
+      FROM sales 
+      LEFT JOIN reviews ON sales.name = reviews.app_name
+      WHERE sales.name = $1;`, [gameName]
+    )
+  }
+  catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});

@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {Table} from 'antd';
 import axios from 'axios';
+import {Modal} from 'antd';
 
 const MainTable = () => {
-  const [games, setGames] = useState([]);
 
+  // Set up modal states
+  const [games, setGames] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [reviews, setReviews] = useState([]);
+
+  // Fetch game data when the component mounts
   useEffect(() => {
     axios.get('/games')
       .then(res => {
@@ -15,6 +22,18 @@ const MainTable = () => {
 
       });
   }, []);
+    
+// Functions to show and hide modal
+const showModal = (game) => {
+  setSelectedGame(game);
+  setIsModalVisible(true);
+};
+const handleOk = () => {
+  setIsModalVisible(false);
+};
+const handleCancel = () => {
+  setIsModalVisible(false);
+};
 
 
   const columns = [
@@ -22,12 +41,16 @@ const MainTable = () => {
       title: 'Rank',
       dataIndex: 'rank',
       key: 'rank',
+      
       sorter: true,
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      render: (text, record) => (
+        <button onClick={() => showModal(record)}>{text}</button>
+      ),
       sorter: true,
     },
     {
@@ -92,8 +115,45 @@ const MainTable = () => {
     }
   ]
 
-return <Table dataSource={games} columns={columns} rowKey="id"/>;
-
-};
+return (
+  <>
+    <Table dataSource={games} columns={columns} rowKey="id" />
+    {selectedGame && (
+      <Modal
+        title="Game Details"
+        open={isModalVisible}
+        onOk={handleOk}
+        onCancel={handleCancel}
+      >
+        <p>Platform: {selectedGame?.platform}</p>
+        <p>Year: {selectedGame?.year}</p>
+        <p>Genre: {selectedGame?.genre}</p>
+        <p>Publisher: {selectedGame?.publisher}</p>
+        <p>North America Sales: {selectedGame?.na_sales}</p>
+        <p>Europe Sales: {selectedGame?.eu_sales}</p>
+        <p>Japan Sales: {selectedGame?.jp_sales}</p>
+        <p>Other Sales: {selectedGame?.other_sales}</p>
+        <p>Global Sales: {selectedGame?.global_sales}</p>
+        <h2>Positive Reviews</h2>
+          {reviews.filter(review => review.review_score === 1).map((review, index) => (
+            <div key={index}>
+              <p>{review.review_text}</p>
+              <p>Score: {review.review_score}</p>
+              <p>Voted: {review.review_votes}</p>
+            </div>
+          ))}
+          <h2>Negative Reviews</h2>
+          {reviews.filter(review => review.review_score === -1).map((review, index) => (
+            <div key={index}>
+              <p>{review.review_text}</p>
+              <p>Score: {review.review_score}</p>
+              <p>Voted: {review.review_votes}</p>
+            </div>
+        ))}
+      </Modal>
+    )}
+  </>
+);
+}
 
 export default MainTable;
