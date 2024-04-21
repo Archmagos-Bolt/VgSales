@@ -3,6 +3,25 @@ import {Table} from 'antd';
 import axios from 'axios';
 import {Modal} from 'antd';
 
+// Define columns for the review table
+const reviewTable = [
+  {
+    title: 'Review Text',
+    dataIndex: 'review_text',
+    key: 'review_text',
+  },
+  {
+    title: 'Review Score',
+    dataIndex: 'review_score',
+    key: 'review_score',
+  },
+  {
+    title: 'Review Votes',
+    dataIndex: 'review_votes',
+    key: 'review_votes',
+  }
+];
+
 const MainTable = () => {
 
   // Set up modal states
@@ -22,7 +41,8 @@ const MainTable = () => {
 
       });
   }, []);
-
+  
+  // Fetch reviews when a game is selected
   useEffect(() => {
     if (selectedGame) {
       console.log("Fetching reviews for game:", selectedGame.name);
@@ -49,9 +69,11 @@ const showModal = (game) => {
 };
 const handleOk = () => {
   setIsModalVisible(false);
+  setReviews([]);
 };
 const handleCancel = () => {
   setIsModalVisible(false);
+  setReviews([]);
 };
 
 
@@ -134,6 +156,7 @@ const handleCancel = () => {
     }
   ]
 
+  // Render the table and modal
 return (
   <>
     <Table dataSource={games} columns={columns} rowKey="id" />
@@ -154,22 +177,12 @@ return (
         <p>Other Sales: {selectedGame?.other_sales}</p>
         <p>Global Sales: {selectedGame?.global_sales}</p>
         <h2>Reviews</h2>
+
         <h2>Positive Reviews</h2>
-          {reviews.filter(review => review.review_score === 1).map((review, index) => (
-            <div key={index}>
-              <p>{review.review_text}</p>
-              <p>Score: {review.review_score}</p>
-              <p>Voted: {review.review_votes}</p>
-            </div>
-          ))}
-          <h2>Negative Reviews</h2>
-          {reviews.filter(review => review.review_score === -1).map((review, index) => (
-            <div key={index}>
-              <p>{review.review_text}</p>
-              <p>Score: {review.review_score}</p>
-              <p>Voted: {review.review_votes}</p>
-            </div>
-        ))}
+        <Table dataSource= {reviews.filter(review => review.review_score === 1)} columns = {reviewTable} pagination = {{pageSize: 10}}></Table>
+          
+        <h2>Negative Reviews</h2>
+        <Table dataSource= {reviews.filter(review => review.review_score === -1)} columns = {reviewTable} pagination = {{pageSize: 10}}></Table>
       </Modal>
     )}
   </>

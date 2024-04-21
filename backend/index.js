@@ -78,10 +78,21 @@ app.get('/reviews/:gameName', async (req, res) => {
   const { gameName } = req.params;
   try {
     const result = await pool.query(
-      `SELECT reviews.review_text, reviews.review_score, reviews.review_votes 
-      FROM reviews 
-      WHERE app_name = $1;`,
-      [gameName]
+      `SELECT * FROM (
+        SELECT reviews.review_text, reviews.review_score, reviews.review_votes
+        FROM reviews
+        WHERE reviews.app_name = $1 AND reviews.review_score = 1
+        ORDER BY reviews.review_votes DESC, reviews.review_text ASC
+        LIMIT 10
+      ) AS PositiveReviews
+      UNION ALL
+      SELECT * FROM (
+        SELECT reviews.review_text, reviews.review_score, reviews.review_votes
+        FROM reviews
+        WHERE reviews.app_name = $1 AND reviews.review_score = -1
+        ORDER BY reviews.review_votes DESC, reviews.review_text ASC
+        LIMIT 10
+      ) AS NegativeReviews`
     );
     if (result.rows.length > 0) {
       res.json(result.rows);
