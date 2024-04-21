@@ -22,11 +22,30 @@ const MainTable = () => {
 
       });
   }, []);
+
+  useEffect(() => {
+    if (selectedGame) {
+      console.log("Fetching reviews for game:", selectedGame.name);
+      axios.get(`/reviews/${encodeURIComponent(selectedGame.name)}`)
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          setReviews(res.data);
+        } else {
+          console.error('Expected reviews to be an array but got:', res.data);
+        }
+      })
+      .catch(err => {
+        console.error(`Error fetching reviews for game: ${selectedGame.name}`, err);
+      });
+    }
+  }, [selectedGame]);
     
 // Functions to show and hide modal
 const showModal = (game) => {
+  console.log("Fetching reviews for game:", game.name);
   setSelectedGame(game);
   setIsModalVisible(true);
+
 };
 const handleOk = () => {
   setIsModalVisible(false);
@@ -134,6 +153,7 @@ return (
         <p>Japan Sales: {selectedGame?.jp_sales}</p>
         <p>Other Sales: {selectedGame?.other_sales}</p>
         <p>Global Sales: {selectedGame?.global_sales}</p>
+        <h2>Reviews</h2>
         <h2>Positive Reviews</h2>
           {reviews.filter(review => review.review_score === 1).map((review, index) => (
             <div key={index}>

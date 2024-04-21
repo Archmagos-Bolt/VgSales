@@ -46,8 +46,8 @@ app.post('/games', async (req, res) => {
   const { name, platform, year, genre, publisher } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO games (name, platform, year, genre, publisher) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, platform, year, genre, publisher]
+      'INSERT INTO games (rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -56,7 +56,7 @@ app.post('/games', async (req, res) => {
 });
 
 // Update game by id
-app.put('/games/:id', async (req, res) => {
+app.put('/sales/:id', async (req, res) => {
   const { id } = req.params;
   const { name, platform, year, genre, publisher } = req.body;
   try {
@@ -73,16 +73,23 @@ app.put('/games/:id', async (req, res) => {
   }
 });
 
-app.get('/reviews', async (req, res) => {
+// Get reviews by game name
+app.get('/reviews/:gameName', async (req, res) => {
+  const { gameName } = req.params;
   try {
     const result = await pool.query(
-      `Select sales.*, reviews.review_text, reviews.review_score, reviews.review_votes 
-      FROM sales 
-      LEFT JOIN reviews ON sales.name = reviews.app_name
-      WHERE sales.name = $1;`, [gameName]
-    )
-  }
-  catch (err) {
-    res.status(500).json({ error: err.message });
+      `SELECT reviews.review_text, reviews.review_score, reviews.review_votes 
+      FROM reviews 
+      WHERE app_name = $1;`,
+      [gameName]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows);
+    } else {
+      res.status(404).send({ message: 'No reviews found for this game.' });
+    }
+  } catch (err) {
+    console.error('Failed to retrieve reviews:', err);
+    res.status(500).send('Server error');
   }
 });
