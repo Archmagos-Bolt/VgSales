@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {Table} from 'antd';
+import { Table, Modal, Button, Form, Input } from 'antd';
 import axios from 'axios';
-import {Modal} from 'antd';
 
 // Define columns for the review table
 const reviewTable = [
@@ -23,10 +22,10 @@ const reviewTable = [
 ];
 
 const MainTable = () => {
-
   // Set up modal states
   const [games, setGames] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [reviews, setReviews] = useState([]);
 
@@ -41,6 +40,8 @@ const MainTable = () => {
 
       });
   }, []);
+
+
   
   // Fetch reviews when a game is selected
   useEffect(() => {
@@ -61,19 +62,56 @@ const MainTable = () => {
   }, [selectedGame]);
     
 // Functions to show and hide modal
-const showModal = (game) => {
-  console.log("Fetching reviews for game:", game.name);
-  setSelectedGame(game);
-  setIsModalVisible(true);
+useEffect(() => {
+  axios.get('/sales').then(res => {
+    setGames(res.data);
+  }).catch(err => {
+    console.error('Error fetching data:', err);
+  });
+}, []);
 
+const showModal = (game) => {
+  setSelectedGame(game);
+  setEditMode(false);
+  setIsModalVisible(true);
 };
-const handleOk = () => {
+
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  console.log(`Current value of ${name}:`, selectedGame[name]);
+  console.log(`New value of ${name}:`, value);
+
+  setSelectedGame(prev => {
+    const updated = { ...prev, [name]: value };
+    console.log(`Updated state for ${name}:`, updated);
+    return updated;
+  });
+};
+
+const handleEditToggle = () => {
+  setEditMode(!editMode);
+};
+
+const handleSave = async () => {
+  try {
+    const response = await axios.put(`/sales/${selectedGame.id}`, selectedGame);
+    setIsModalVisible(false);
+    console.log('Game details updated:', response.data);
+  } catch (error) {
+    console.error('Failed to update game details:', error);
+  }
+};
+
+
+/*const handleOk = () => {
   setIsModalVisible(false);
   setReviews([]);
 };
+*/
 const handleCancel = () => {
   setIsModalVisible(false);
   setReviews([]);
+  setEditMode(false);
 };
 
 
@@ -156,37 +194,84 @@ const handleCancel = () => {
     }
   ]
 
-  // Render the table and modal
-return (
-  <>
-    <Table dataSource={games} columns={columns} rowKey="id" />
-    {selectedGame && (
-      <Modal
-        title="Game Details"
-        open={isModalVisible}
-        onOk={handleOk}
-        onCancel={handleCancel}
-      >
-        <p>Platform: {selectedGame?.platform}</p>
-        <p>Year: {selectedGame?.year}</p>
-        <p>Genre: {selectedGame?.genre}</p>
-        <p>Publisher: {selectedGame?.publisher}</p>
-        <p>North America Sales: {selectedGame?.na_sales}</p>
-        <p>Europe Sales: {selectedGame?.eu_sales}</p>
-        <p>Japan Sales: {selectedGame?.jp_sales}</p>
-        <p>Other Sales: {selectedGame?.other_sales}</p>
-        <p>Global Sales: {selectedGame?.global_sales}</p>
-        <h2>Reviews</h2>
+  // Render modal
+  return (
+    <>
+      <Table dataSource={games} columns={columns} rowKey="id" />
+      {selectedGame && (
+        <Modal
+          title={editMode ? "Edit Game Details" : "Game Details"}
+          open={isModalVisible}
+          onOk={editMode ? handleSave : handleCancel}
+          onCancel={handleCancel}
+          footer={[
+            <Button key="edit" onClick={handleEditToggle}>
+              {editMode ? "Cancel" : "Edit"}
+            </Button>,
+            editMode && (
+              <Button key="save" onClick={handleSave}>
+                Save Changes
+              </Button>
+            )
+          ]}
+        >
+          {editMode ? (
+            <Form layout="vertical">
+              <Form.Item label="Rank">
+                <Input name="rank" value={selectedGame.rank} onChange={handleInputChange} />
+              </Form.Item>     
+              <Form.Item label="Name">
+              <Input value={selectedGame?.name} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Platform">
+              <Input value={selectedGame?.platform} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Year">
+              <Input value={selectedGame?.year} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Genre">
+              <Input value={selectedGame?.genre} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Publisher">
+              <Input value={selectedGame?.publisher} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="North America Sales">
+              <Input value={selectedGame?.na_sales} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Europe Sales">
+              <Input value={selectedGame?.eu_sales} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Japan Sales">
+              <Input value={selectedGame?.jp_sales} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Other Sales">
+              <Input value={selectedGame?.other_sales} onChange = {handleInputChange}/>
+              </Form.Item>
+              <Form.Item label="Global Sales">
+              <Input value={selectedGame?.global_sales} onChange = {handleInputChange}/>
+              </Form.Item>
+            </Form>
+          ) : (
+            <>
+              <p>Platform: {selectedGame.platform}</p>
+              <p>Publisher: {selectedGame.publisher}</p>
+              <p>Year: {selectedGame.year}</p>
+              <p>Genre: {selectedGame.genre}</p>
+              <p>North America Sales: {selectedGame.na_sales}</p>
+              <p>Europe Sales: {selectedGame.eu_sales}</p>
+              <p>Japan Sales: {selectedGame.jp_sales}</p>
+              <p>Other Sales: {selectedGame.other_sales}</p>
+              <p>Global Sales: {selectedGame.global_sales}</p>
+              <h2>Reviews</h2>
+              <Table dataSource={reviews.filter(review => review.review_score === 1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
+              <Table dataSource={reviews.filter(review => review.review_score === -1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
+            </>
+          )}
+        </Modal>
+      )}
+    </>
+  );
+};
 
-        <h2>Positive Reviews</h2>
-        <Table dataSource= {reviews.filter(review => review.review_score === 1)} columns = {reviewTable} pagination = {{pageSize: 10}}></Table>
-          
-        <h2>Negative Reviews</h2>
-        <Table dataSource= {reviews.filter(review => review.review_score === -1)} columns = {reviewTable} pagination = {{pageSize: 10}}></Table>
-      </Modal>
-    )}
-  </>
-);
-}
 
-export default MainTable;
+export default MainTable; 

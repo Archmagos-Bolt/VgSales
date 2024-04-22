@@ -42,15 +42,16 @@ app.get('/games', async (req, res) => {
 });
 
 // Post game by id
-app.post('/games', async (req, res) => {
-  const { name, platform, year, genre, publisher } = req.body;
+app.post('/sales', async (req, res) => {
+  const { rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO games (rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      'INSERT INTO sales (rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
       [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    console.error('Failed to insert into sales:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -61,7 +62,7 @@ app.put('/sales/:id', async (req, res) => {
   const { rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE games SET rank = $1, name = $2, platform = $3, year = $4, genre = $5, publisher = $6, na_sales = $7, eu_sales = $8, jp_sales = $9, other_sales = $10, global_sales = $11 WHERE id = $12 RETURNING *',
+      'UPDATE sales SET rank = $1, name = $2, platform = $3, year = $4, genre = $5, publisher = $6, na_sales = $7, eu_sales = $8, jp_sales = $9, other_sales = $10, global_sales = $11 WHERE id = $12 RETURNING *',
       [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales, id]
     );
     if (result.rows.length === 0) {
@@ -102,5 +103,19 @@ app.get('/reviews/:gameName', async (req, res) => {
   } catch (err) {
     console.error('Failed to retrieve reviews:', err);
     res.status(500).send('Server error');
+  }
+});
+
+app.post('/reviews', async (req, res) => {
+  const { app_name, review_text, review_score, review_votes } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO reviews (app_name, review_text, review_score, review_votes) VALUES ($1, $2, $3, $4) RETURNING *',
+      [app_name, review_text, review_score, review_votes]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Failed to insert review:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
