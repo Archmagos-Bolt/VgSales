@@ -25,6 +25,8 @@ const MainTable = () => {
   // Set up modal states
   const [games, setGames] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [filter, setFilter] = useState([]);
+  const [searchText, setSearchText] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -34,6 +36,7 @@ const MainTable = () => {
     axios.get('/games')
       .then(res => {
         setGames(res.data);
+        setFilter(res.data);
       })
       .catch(err => {
         console.error('Error fetching data: ', err);
@@ -41,7 +44,7 @@ const MainTable = () => {
       });
   }, []);
 
-
+  
   
   // Fetch reviews when a game is selected
   useEffect(() => {
@@ -69,6 +72,17 @@ useEffect(() => {
     console.error('Error fetching data:', err);
   });
 }, []);
+
+  const handleSearch = (event) => {
+    const value = event.target.value;
+    setSearchText(value);
+    const filteredData = games.filter(game => {
+      return Object.keys(game).some(key =>
+        game[key].toString().toLowerCase().includes(value.toLowerCase())
+      );
+    });
+    setFilter(filteredData);
+  };
 
 const showModal = (game) => {
   setSelectedGame(game);
@@ -121,7 +135,7 @@ const handleCancel = () => {
       dataIndex: 'rank',
       key: 'rank',
       
-      sorter: true,
+      sorter: (a,b) => a.rank - b.rank,
     },
     {
       title: 'Name',
@@ -130,74 +144,75 @@ const handleCancel = () => {
       render: (text, record) => (
         <button onClick={() => showModal(record)}>{text}</button>
       ),
-      sorter: true,
+      sorter: (a,b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Platform',
       dataIndex: 'platform',
       key: 'platform',
-      sorter: true,
+      sorter: (a,b) => a.platform.localeCompare(b.platform),
     },
     {
       title: 'Year',
       dataIndex: 'year',
       key: 'year',
-      sorter: true,
+      sorter: (a,b) => a.year - b.year,
     },
     {
       title: 'Genre',
       dataIndex: 'genre',
       key: 'genre',
-      sorter: true,
+      sorter: (a,b) => a.genre.localeCompare(b.genre),
     },
     {
       title: 'Publisher',
       dataIndex: 'publisher',
       key: 'publisher',
-      sorter: true,
+      sorter: (a,b) => a.publisher.localeCompare(b.publisher),
     },
       {
         title: 'North America Sales',
         dataIndex: 'na_sales',
         key: 'na_sales',
-        sorter: true,
+        sorter: (a,b) => a.na_sales - b.na_sales,
       },
       {
         title: 'Europe Sales',
         dataIndex: 'eu_sales',
         key: 'eu_sales',
-        sorter: true,
+        sorter: (a,b) => a.eu_sales - b.eu_sales,
       },
       {
         title: 'Japan Sales',
         dataIndex: 'jp_sales',
         key: 'jp_sales',
-        sorter: true,
+        sorter: (a,b) => a.jp_sales - b.jp_sales,
       },
       {
         title: 'Other Sales',
         dataIndex: 'other_sales',
         key: 'other_sales',
-        sorter: true,
+        sorter: (a,b) => a.other_sales - b.other_sales,
       },
       {
         title: 'Global Sales',
         dataIndex: 'global_sales',
         key: 'global_sales',
-        sorter: true,
+        sorter: (a,b) => a.global_sales - b.global_sales,
       },
     {
       title: 'Review Count',
       dataIndex: 'review_count',
       key: 'review_count',
-      sorter: true,
+      sorter: (a,b) => a.review_count - b.review_count,
     }
   ]
 
   // Render modal
   return (
     <>
-      <Table dataSource={games} columns={columns} rowKey="id" />
+      <Input placeholder="Search" value={searchText} onChange={handleSearch} style={{marginBottom: 16, width: 200}}/>
+      <Table dataSource={filter} columns={columns} rowKey="id" />
       {selectedGame && (
         <Modal
           title={editMode ? "Edit Game Details" : "Game Details"}
