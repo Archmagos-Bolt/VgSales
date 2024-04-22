@@ -58,11 +58,11 @@ app.post('/games', async (req, res) => {
 // Update game by id
 app.put('/sales/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, platform, year, genre, publisher } = req.body;
+  const { rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE games SET name = $1, platform = $2, year = $3, genre = $4, publisher = $5 WHERE id = $6 RETURNING *',
-      [name, platform, year, genre, publisher, id]
+      'UPDATE games SET rank = $1, name = $2, platform = $3, year = $4, genre = $5, publisher = $6, na_sales = $7, eu_sales = $8, jp_sales = $9, other_sales = $10, global_sales = $11 WHERE id = $12 RETURNING *',
+      [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Game not found' });
@@ -89,10 +89,10 @@ app.get('/reviews/:gameName', async (req, res) => {
       SELECT * FROM (
         SELECT reviews.review_text, reviews.review_score, reviews.review_votes
         FROM reviews
-        WHERE reviews.app_name = $1 AND reviews.review_score = -1
+        WHERE reviews.app_name = $2 AND reviews.review_score = -1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
         LIMIT 10
-      ) AS NegativeReviews`
+      ) AS NegativeReviews`, [gameName, gameName]
     );
     if (result.rows.length > 0) {
       res.json(result.rows);
