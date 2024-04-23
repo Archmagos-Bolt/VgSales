@@ -21,6 +21,43 @@ const reviewTable = [
   }
 ];
 
+const ReviewForm = ({ gameName, setReviews }) => {
+  const [form] = Form.useForm();
+  
+
+  const handleReviewSubmit = async (values) => {
+      const {reviewText, reviewScore} = values;
+      try{
+      const response = await axios.post('/reviews', {
+        app_name: gameName,
+        review_text: reviewText,
+        review_score: reviewScore,
+
+    });
+    console.log('Review added:', response.data);
+    setReviews(prev => [...prev, response.data]);
+    form.resetFields();
+  } catch (error) {
+    console.error('Error adding review:', error);
+  }
+};
+
+return (
+  <Form form = {form} layout="inline" onFinish={handleReviewSubmit} autoComplete='off'>
+    <Form.Item label="Review Text" name = "reviewText">
+      <Input />
+    </Form.Item>
+    <Form.Item label="Review Score" name = "reviewScore">
+      <Input type='number'/>
+    </Form.Item>
+    <Form.Item>
+      <Button type="primary" htmlType="submit">Submit Review</Button>
+    </Form.Item>
+  </Form>
+);
+};
+
+
 const MainTable = () => {
   // Set up modal states
   const [games, setGames] = useState([]);
@@ -44,8 +81,6 @@ const MainTable = () => {
       });
   }, []);
 
-  
-  
   // Fetch reviews when a game is selected
   useEffect(() => {
     if (selectedGame) {
@@ -61,8 +96,10 @@ const MainTable = () => {
       .catch(err => {
         console.error(`Error fetching reviews for game: ${selectedGame.name}`, err);
       });
+    } else {
+      setReviews([]);
     }
-  }, [selectedGame]);
+  }, [selectedGame, isModalVisible]);
     
 // Functions to show and hide modal
 useEffect(() => {
@@ -90,6 +127,8 @@ const showModal = (game) => {
   setIsModalVisible(true);
 };
 
+
+
 const handleInputChange = (e) => {
   const { name, value } = e.target;
   console.log(`Current value of ${name}:`, selectedGame[name]);
@@ -116,12 +155,6 @@ const handleSave = async () => {
   }
 };
 
-
-/*const handleOk = () => {
-  setIsModalVisible(false);
-  setReviews([]);
-};
-*/
 const handleCancel = () => {
   setIsModalVisible(false);
   setReviews([]);
@@ -278,6 +311,7 @@ const handleCancel = () => {
               <p>Other Sales: {selectedGame.other_sales}</p>
               <p>Global Sales: {selectedGame.global_sales}</p>
               <h2>Reviews</h2>
+              <ReviewForm gameName={selectedGame.name} setReviews={setReviews} />
               <Table dataSource={reviews.filter(review => review.review_score === 1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
               <Table dataSource={reviews.filter(review => review.review_score === -1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
             </>
@@ -290,3 +324,4 @@ const handleCancel = () => {
 
 
 export default MainTable; 
+export {ReviewForm};
