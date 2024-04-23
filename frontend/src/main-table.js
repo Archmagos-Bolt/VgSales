@@ -103,25 +103,18 @@ const MainTable = () => {
     }
   }, [selectedGame, isModalVisible]);
     
-// Functions to show and hide modal
-useEffect(() => {
-  axios.get('/sales').then(res => {
-    setGames(res.data);
-  }).catch(err => {
-    console.error('Error fetching data:', err);
-  });
-}, []);
 
-  const handleSearch = (event) => {
-    const value = event.target.value;
-    setSearchText(value);
-    const filteredData = games.filter(game => {
-      return Object.keys(game).some(key =>
-        game[key].toString().toLowerCase().includes(value.toLowerCase())
-      );
-    });
-    setFilter(filteredData);
-  };
+// Function to handle search
+const handleSearch = (event) => {
+  const value = event.target.value;
+  setSearchText(value);
+  const filteredData = games.filter(game => {
+    return Object.keys(game).some(key =>
+      game[key].toString().toLowerCase().includes(value.toLowerCase())
+    );
+  });
+  setFilter(filteredData);
+};
 
 const showModal = (game) => {
   setSelectedGame(game);
