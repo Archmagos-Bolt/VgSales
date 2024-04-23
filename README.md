@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS reviews(
 4. Run import-datasets.py to import data (might take a few minutes)
 5. Add the game ID to sales table with this:
 ALTER TABLE sales ADD COLUMN id SERIAL PRIMARY KEY;
+ALTER TABLE reviews ADD COLUMN id SERIAL PRIMARY KEY;
 Note: (Might be possible to do in step 3 but was unsure about how that would work with the import script so erring on the safe side recommend only running after the importation)
-6. Run the backend and frontend by navigating to each and running npm start.
+7. Run the backend and frontend by navigating to each and running npm start.
 
