@@ -3,7 +3,7 @@ import { Table, Modal, Button, Form, Input } from 'antd';
 import axios from 'axios';
 
 // Define columns for the review table
-const reviewTable = [
+const reviewTable = (handleDeleteReview) => ([
   {
     title: 'Review Text',
     dataIndex: 'review_text',
@@ -18,8 +18,18 @@ const reviewTable = [
     title: 'Review Votes',
     dataIndex: 'review_votes',
     key: 'review_votes',
-  }
-];
+  },
+  {
+    title: 'Actions',
+    key: 'actions',
+    render: (_, record) => (
+      <>
+        <Button danger onClick={() => handleDeleteReview(record)}>Delete</Button>
+      </>
+    ),
+  },
+]);
+
 
 // Create review form component
 const ReviewForm = ({ gameName, setReviews }) => {
@@ -103,6 +113,18 @@ const MainTable = () => {
     }
   }, [selectedGame, isModalVisible]);
     
+// Function to handle review deletion
+  const handleDeleteReview = async (review) => {
+    try {
+      await axios.delete(`/reviews/${review.id}`);
+      setReviews(prev => prev.filter(r => r.id !== review.id));
+      console.log('Review deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete review:', error);
+    }
+  };
+  const reviewColumns= reviewTable(handleDeleteReview);
+
 
 // Function to handle search
 const handleSearch = (event) => {
@@ -307,8 +329,8 @@ const handleCancel = () => {
               <p>Global Sales: {selectedGame.global_sales}</p>
               <h2>Reviews</h2>
               <ReviewForm gameName={selectedGame.name} setReviews={setReviews} />
-              <Table dataSource={reviews.filter(review => review.review_score === 1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
-              <Table dataSource={reviews.filter(review => review.review_score === -1)} columns={reviewTable} pagination={{ pageSize: 10 }} />
+              <Table dataSource={reviews.filter(review => review.review_score === 1)} columns={reviewColumns} pagination={{ pageSize: 10 }} />
+              <Table dataSource={reviews.filter(review => review.review_score === -1)} columns={reviewColumns} pagination={{ pageSize: 10 }} />
             </>
           )}
         </Modal>

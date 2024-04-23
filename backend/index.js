@@ -80,7 +80,7 @@ app.get('/reviews/:gameName', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM (
-        SELECT reviews.review_text, reviews.review_score, reviews.review_votes
+        SELECT reviews.review_text, reviews.review_score, reviews.review_votes, reviews.id
         FROM reviews
         WHERE reviews.app_name = $1 AND reviews.review_score = 1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
@@ -88,7 +88,7 @@ app.get('/reviews/:gameName', async (req, res) => {
       ) AS PositiveReviews
       UNION ALL
       SELECT * FROM (
-        SELECT reviews.review_text, reviews.review_score, reviews.review_votes
+        SELECT reviews.review_text, reviews.review_score, reviews.review_votes, reviews.id
         FROM reviews
         WHERE reviews.app_name = $2 AND reviews.review_score = -1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
@@ -117,6 +117,24 @@ app.post('/reviews', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Failed to insert review:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete a review by id
+app.delete('/reviews/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      'DELETE FROM reviews WHERE id = $1 RETURNING *;', [id]
+    );
+    if (result.rows.length > 0) {
+      res.send({ message: 'Review deleted successfully', review: result.rows[0] });
+    } else {
+      res.status(404).json({ message: 'Review not found' });
+    }
+  } catch (err) {
+    console.error('Failed to delete review:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
