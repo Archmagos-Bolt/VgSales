@@ -21,10 +21,11 @@ const reviewTable = [
   }
 ];
 
+// Create review form component
 const ReviewForm = ({ gameName, setReviews }) => {
   const [form] = Form.useForm();
   
-
+  // Handle form submission
   const handleReviewSubmit = async (values) => {
       const {reviewText, reviewScore} = values;
       try{
@@ -42,6 +43,7 @@ const ReviewForm = ({ gameName, setReviews }) => {
   }
 };
 
+// Render form
 return (
   <Form form = {form} layout="inline" onFinish={handleReviewSubmit} autoComplete='off'>
     <Form.Item label="Review Text" name = "reviewText">
@@ -128,7 +130,7 @@ const showModal = (game) => {
 };
 
 
-
+// Functions to handle input change, edit toggle, save, and cancel
 const handleInputChange = (e) => {
   const { name, value } = e.target;
   console.log(`Current value of ${name}:`, selectedGame[name]);
@@ -241,7 +243,7 @@ const handleCancel = () => {
     }
   ]
 
-  // Render modal
+  // Render modal and table
   return (
     <>
       <Input placeholder="Search" value={searchText} onChange={handleSearch} style={{marginBottom: 16, width: 200}}/>
@@ -322,6 +324,6 @@ const handleCancel = () => {
   );
 };
 
-
+// Export the MainTable and ReviewForm components
 export default MainTable; 
 export {ReviewForm};

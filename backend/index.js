@@ -106,6 +106,7 @@ app.get('/reviews/:gameName', async (req, res) => {
   }
 });
 
+// Add reviews by game name
 app.post('/reviews', async (req, res) => {
   const { app_name, review_text, review_score, review_votes } = req.body;
   try {
