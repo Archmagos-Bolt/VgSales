@@ -107,7 +107,7 @@ const MainTable = () => {
 
   // Fetch reviews when a game is selected
   useEffect(() => {
-    if (selectedGame) {
+    if (selectedGame && !editMode) {
       console.log("Fetching reviews for game:", selectedGame.name);
       axios.get(`http://localhost:5000/reviews/${encodeURIComponent(selectedGame.name)}`)
       .then(res => {
@@ -123,7 +123,7 @@ const MainTable = () => {
     } else {
       setReviews([]);
     }
-  }, [selectedGame, isModalVisible]);
+  }, [selectedGame, editMode]);
     
 // Function to handle review deletion
   const handleDeleteReview = async (review) => {
