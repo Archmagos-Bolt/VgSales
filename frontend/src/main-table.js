@@ -103,7 +103,7 @@ const MainTable = () => {
         console.error('Error fetching data: ', err);
 
       });
-  }, []);
+  }, [setSortOrder, sortOrder]);
 
   // Fetch reviews when a game is selected
   useEffect(() => {
@@ -177,8 +177,16 @@ const handleEditToggle = () => {
 const handleSave = async () => {
   try {
     const response = await axios.put(`http://localhost:5000/sales/${selectedGame.id}`, selectedGame);
+    if (response.status === 200) {
+    const updatedGames = games.map(game =>
+      game.id === selectedGame.id ? { ...game, ...selectedGame } : game
+    );
+    setGames(updatedGames);
+    setFilter(updatedGames);
     setIsModalVisible(false);
+    setEditMode(false);
     console.log('Game details updated:', response.data);
+  }
   } catch (error) {
     console.error('Failed to update game details:', error);
   }
