@@ -21,7 +21,6 @@ services:
     depends_on:
       - postgres
 
-
   frontend:
     build: ./frontend
     ports:
@@ -32,7 +31,8 @@ services:
   importer:
     build: ./import
     environment:
-      DATABASE_URL: postgres://postgres:admin@postgres:5432/VgSLDB
+      - RUN_IMPORT=false
+      - DATABASE_URL: postgres://postgres:admin@postgres:5432/VgSLDB
     volumes:
       - ./datasets:/datasets
     depends_on: 

@@ -5,6 +5,7 @@ import csv
 import psycopg2
 from io import StringIO
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(filename='import.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
@@ -76,6 +77,14 @@ def main():
     conn = psycopg2.connect(dbname='VgSLDB', user='postgres', password='admin', host='postgres', port='5432')
     cursor = conn.cursor()
     try:
+        # Check if the import process should be skipped
+        if os.environ.get("RUN_IMPORT") != "true":
+            print("Skipping import")
+            exit()
+        if os.path.exists('/data/imported.txt'):
+            print('Data has already been imported. Exiting...')
+            exit()
+        
         create_db_tables(cursor)
         # Process and stream sales data
         logging.info('Processing sales data')
@@ -104,6 +113,9 @@ def main():
         conn.close()
         logging.info('Database connection closed')
 
-
+    # Write a file to indicate that the data has been imported
+    with open('/data/imported.txt', 'w') as f:
+        f.write('Data has been imported')
+        
 if __name__ == '__main__':
     main()
