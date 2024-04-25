@@ -32,7 +32,7 @@ services:
     build: ./import
     environment:
       - RUN_IMPORT=false
-      - DATABASE_URL: postgres://postgres:admin@postgres:5432/VgSLDB
+      - DATABASE_URL=postgres://postgres:admin@postgres:5432/VgSLDB
     volumes:
       - ./datasets:/datasets
     depends_on: 
