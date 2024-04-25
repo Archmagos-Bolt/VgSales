@@ -4,13 +4,14 @@ import { Form, Input, Button, Collapse } from 'antd';
 
 const { Panel } = Collapse;
 
-const AddGameForm = () => {
+const AddGameForm = ({onGameAdded}) => {
   const [form] = Form.useForm();
 
   const onFinish = async (values) => {
     try {
       const response = await axios.post('http://localhost:5000/sales', values);
       console.log('Game added:', response.data);
+      onGameAdded(response.data);
       form.resetFields();
     } catch (error) {
       console.error('Error adding game:', error);

@@ -82,15 +82,22 @@ const MainTable = () => {
   const [editMode, setEditMode] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [sortOrder, setSortOrder] = useState('ascend');
 
   // Fetch game data when the component mounts
   useEffect(() => {
-console.log('Backend URL:', process.env.REACT_APP_BACKEND_URL);
-
     axios.get(`http://localhost:5000/games`)
       .then(res => {
-        setGames(res.data);
-        setFilter(res.data);
+        const sortedData = res.data.sort((a, b) => {
+          if (sortOrder === 'ascend') {
+          return a.rank - b.rank;
+        } else {
+          return b.rank - a.rank;
+        }
+        });
+
+        setGames(sortedData);
+        setFilter(sortedData);
       })
       .catch(err => {
         console.error('Error fetching data: ', err);
