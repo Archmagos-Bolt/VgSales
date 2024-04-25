@@ -23,6 +23,8 @@ services:
 
   frontend:
     build: ./frontend
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:5000
     ports:
       - "3000:80"
     depends_on:
@@ -34,7 +36,8 @@ services:
       - RUN_IMPORT=false
       - DATABASE_URL=postgres://postgres:admin@postgres:5432/VgSLDB
     volumes:
-      - ./datasets:/datasets
+      - ./import/datasets:/app/datasets
+      - ./data:/data
     depends_on: 
       - postgres
 

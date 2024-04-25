@@ -14,6 +14,7 @@ def create_db_tables(cursor):
     # Creating sales table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sales (
+            rank INT,
             name TEXT,
             platform TEXT,
             year INT,
@@ -29,6 +30,7 @@ def create_db_tables(cursor):
     # Creating reviews table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reviews (
+            app_id INT,
             app_name TEXT,
             review_text TEXT,
             review_score INT,
@@ -77,22 +79,23 @@ def main():
     conn = psycopg2.connect(dbname='VgSLDB', user='postgres', password='admin', host='postgres', port='5432')
     cursor = conn.cursor()
     try:
+        
         # Check if the import process should be skipped
         if os.environ.get("RUN_IMPORT") != "true":
             print("Skipping import")
             exit()
-        if os.path.exists('/data/imported.txt'):
-            print('Data has already been imported. Exiting...')
-            exit()
+        #if os.path.exists('/data/imported.txt'):
+        #    print('Data has already been imported. Exiting...')
+        #    exit()
         
         create_db_tables(cursor)
         # Process and stream sales data
         logging.info('Processing sales data')
-        process_and_load_chunks('/datasets/vgsales.csv', 'sales', cursor, sales_cleaning)
+        process_and_load_chunks('/app/datasets/vgsales.csv', 'sales', cursor, sales_cleaning)
 
         # Process and stream reviews data
         logging.info('Processing reviews data')
-        process_and_load_chunks('/datasets/dataset.csv', 'reviews', cursor, reviews_cleaning)
+        process_and_load_chunks('/app/datasets/dataset.csv', 'reviews', cursor, reviews_cleaning)
 
         # Commit all changes to the database
         conn.commit()

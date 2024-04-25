@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Table, Modal, Button, Form, Input } from 'antd';
 import axios from 'axios';
 
+
+console.log('Backend URL:', process.env.REACT_APP_BACKEND_URL);
+
 // Define columns for the review table
 const reviewTable = (handleDeleteReview) => ([
   {
@@ -39,7 +42,7 @@ const ReviewForm = ({ gameName, setReviews }) => {
   const handleReviewSubmit = async (values) => {
       const {reviewText, reviewScore} = values;
       try{
-      const response = await axios.post('/reviews', {
+      const response = await axios.post('http://localhost:5000/reviews', {
         app_name: gameName,
         review_text: reviewText,
         review_score: reviewScore,
@@ -82,7 +85,9 @@ const MainTable = () => {
 
   // Fetch game data when the component mounts
   useEffect(() => {
-    axios.get('/games')
+console.log('Backend URL:', process.env.REACT_APP_BACKEND_URL);
+
+    axios.get(`http://localhost:5000/games`)
       .then(res => {
         setGames(res.data);
         setFilter(res.data);
@@ -97,7 +102,7 @@ const MainTable = () => {
   useEffect(() => {
     if (selectedGame) {
       console.log("Fetching reviews for game:", selectedGame.name);
-      axios.get(`/reviews/${encodeURIComponent(selectedGame.name)}`)
+      axios.get(`http://localhost:5000/reviews/${encodeURIComponent(selectedGame.name)}`)
       .then(res => {
         if (Array.isArray(res.data)) {
           setReviews(res.data);
@@ -116,7 +121,7 @@ const MainTable = () => {
 // Function to handle review deletion
   const handleDeleteReview = async (review) => {
     try {
-      await axios.delete(`/reviews/${review.id}`);
+      await axios.delete(`http://localhost:5000/reviews/${review.id}`);
       setReviews(prev => prev.filter(r => r.id !== review.id));
       console.log('Review deleted successfully');
     } catch (error) {
@@ -164,7 +169,7 @@ const handleEditToggle = () => {
 
 const handleSave = async () => {
   try {
-    const response = await axios.put(`/sales/${selectedGame.id}`, selectedGame);
+    const response = await axios.put(`http://localhost:5000/sales/${selectedGame.id}`, selectedGame);
     setIsModalVisible(false);
     console.log('Game details updated:', response.data);
   } catch (error) {

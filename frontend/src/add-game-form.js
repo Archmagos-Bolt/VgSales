@@ -9,7 +9,7 @@ const AddGameForm = () => {
 
   const onFinish = async (values) => {
     try {
-      const response = await axios.post('/sales', values);
+      const response = await axios.post('http://localhost:5000/sales', values);
       console.log('Game added:', response.data);
       form.resetFields();
     } catch (error) {
