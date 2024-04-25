@@ -1,4 +1,3 @@
-#Important! Must execute before working with database! Recommend naming the dataset files as specified in the code below.
 
 import pandas as pd
 import csv
@@ -65,6 +64,7 @@ def stream_to_postgres(df, table_name, cursor):
     buffer.seek(0)
     cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER ',', QUOTE '\"')", buffer)  # Detailed copy specifications
     
+    #Create unique ID for each row in the tables
 def create_table_id(cursor):
     cursor.execute("""
         ALTER TABLE sales ADD COLUMN id SERIAL PRIMARY KEY;
@@ -84,9 +84,6 @@ def main():
         if os.environ.get("RUN_IMPORT") != "true":
             print("Skipping import")
             exit()
-        #if os.path.exists('/data/imported.txt'):
-        #    print('Data has already been imported. Exiting...')
-        #    exit()
         
         create_db_tables(cursor)
         # Process and stream sales data
