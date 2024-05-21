@@ -20,7 +20,7 @@ services:
       - "5000:5000"
     depends_on:
       - postgres
-    command: node, index.js
+    command: node index.js
 
   frontend:
     build: ./frontend
