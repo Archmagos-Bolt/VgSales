@@ -1,21 +1,18 @@
-
 import pandas as pd
 import csv
 import psycopg2
 from io import StringIO
 import logging
-import os
+import random
 
 # Configure logging
 logging.basicConfig(filename='import.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
 
 def create_db_tables(cursor):
-    # Creating sales table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sales (
-            rank INT,
+            rank INT NULL,
             name TEXT,
-            platform TEXT,
             year INT,
             genre TEXT,
             publisher TEXT,
@@ -23,99 +20,145 @@ def create_db_tables(cursor):
             eu_sales FLOAT,
             jp_sales FLOAT,
             other_sales FLOAT,
-            global_sales FLOAT
+            global_sales FLOAT,
+            id SERIAL PRIMARY KEY
         );
     """)
-    # Creating reviews table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS reviews (
-            app_id INT,
+            id SERIAL PRIMARY KEY,
+            app_id BIGINT,
             app_name TEXT,
             review_text TEXT,
             review_score INT,
-            review_votes INT
+            review_votes INT,
+            FOREIGN KEY (app_id) REFERENCES sales (id)
         );
     """)
 
-def process_and_load_chunks(filepath, table_name, cursor, cleaning_function, chunksize=50000):
-    # Read and process CSV in chunks
-    for chunk in pd.read_csv(filepath, chunksize=chunksize):
-        cleaned_chunk = cleaning_function(chunk)
-        if not cleaned_chunk.empty:
-            stream_to_postgres(cleaned_chunk, table_name, cursor)
+def insert_sales_record(cursor, record):
+    try:
+        cursor.execute("""
+            INSERT INTO sales (rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales)
+            VALUES (NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (
+            record['Name'], record['Year'], record['Genre'], record['Publisher'],
+            record['NA_Sales'], record['EU_Sales'], record['JP_Sales'], record['Other_Sales'], record['Global_Sales']
+        ))
+        sales_id = cursor.fetchone()[0]
+        logging.info(f'Inserted sales record with ID: {sales_id}')
+        return sales_id
+    except Exception as e:
+        logging.error(f'Error inserting sales record: {e}', exc_info=True)
+        return None
+
+def insert_review_record(cursor, review):
+    try:
+        cursor.execute("""
+            INSERT INTO reviews (app_id, app_name, review_text, review_score, review_votes)
+            VALUES (%s, %s, %s, %s, %s)
+        """, review)
+        logging.info(f'Inserted review for app_id: {review[0]}')
+    except Exception as e:
+        logging.error(f'Error inserting review record: {e}', exc_info=True)
+
+def process_and_load_sales_and_reviews(sales_filepath, reviews_filepath, cursor, sales_cleaning, reviews_cleaning):
+    try:
+        # Read and index all sales by game name
+        sales_data=[]
+        with open(sales_filepath, 'r', newline='', encoding='utf-8') as salesfile:
+            sales_reader = csv.DictReader(salesfile, quoting=csv.QUOTE_ALL)
+            for sales_record in sales_reader:
+                sales_data.append(sales_record)
+
+        # Convert to DataFrame and clean the data
+        sales_df = pd.DataFrame(sales_data)
+        sales_df = sales_cleaning(sales_df)
+
+        sales_id_map={}
+        for _, sales_record in sales_df.iterrows():
+            sales_record = sales_record.to_dict()
+            sales_id = insert_sales_record(cursor, sales_record)
+            if sales_id:
+                sales_id_map[sales_record['Name']] = sales_id
+                    
+        with open(reviews_filepath, 'r', newline='', encoding='utf-8') as reviewsfile:
+            reviews_reader = csv.DictReader(reviewsfile, quoting=csv.QUOTE_ALL)
+            for review_record in reviews_reader:
+                app_name = review_record['app_name'].strip()
+                if app_name in sales_id_map:
+                    sales_id = sales_id_map[app_name]
+                    review_df = pd.DataFrame([review_record])
+                    review_df = reviews_cleaning(review_df)
+                    if not review_df.empty:
+                        review_record = review_df.iloc[0].to_dict()
+                        cleaned_review =(
+                            sales_id, review_record['app_name'], review_record['review_text'],
+                            review_record['review_score'], review_record['review_votes']
+                        )
+                        insert_review_record(cursor, cleaned_review)
+                    
+    except Exception as e:
+        logging.error(f'Error processing sales and reviews data: {e}', exc_info=True)
+
 
 def sales_cleaning(df):
-    # Clean and filter sales data
-    df.fillna({'Year': 0}, inplace=True)
-    df['Year'] = df['Year'].astype(int)
-    return df
+    try:
+        logging.info('Starting sales data cleaning')
+
+        df['Name'] = df['Name'].str.strip().replace('"', '')
+        df['Genre'] = df['Genre'].str.strip()
+        df['Publisher'] = df['Publisher'].str.strip()
+        df['Year'] = pd.to_numeric(df['Year'], errors='coerce').fillna(0).astype(int)
+        
+        sales_columns = ['NA_Sales', 'EU_Sales', 'JP_Sales', 'Other_Sales', 'Global_Sales']
+        for col in sales_columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        # Group by Name, Year, Genre, and Publisher to sum the sales
+        df = df.groupby(['Name', 'Year', 'Genre', 'Publisher'], as_index=False).agg({
+            'NA_Sales': 'sum',
+            'EU_Sales': 'sum',
+            'JP_Sales': 'sum',
+            'Other_Sales': 'sum',
+            'Global_Sales': 'sum'
+        })
+
+
+        return df
+    except Exception as e:
+        logging.error(f'Error cleaning sales data: {e}', exc_info=True)
+        return pd.DataFrame()
 
 def reviews_cleaning(df):
-    # Clean and filter reviews data
     df['review_text'] = df['review_text'].astype(str).replace("'", "''", regex=True)
-    df = df[df['app_id'] >= 10]  # Ensure processing starts from app_id 10
     df = df[~df['review_text'].isin(["Early Access Review", "", "."])]
+    df['app_name']=df['app_name'].str.strip()
     return df
 
-def stream_to_postgres(df, table_name, cursor):
-    # Stream DataFrame to PostgreSQL using COPY with explicit CSV formatting
-    buffer = StringIO()
-    df.to_csv(buffer, index=False, header=False, quoting=csv.QUOTE_NONNUMERIC)  # Ensure non-numeric fields are quoted
-    buffer.seek(0)
-    cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER ',', QUOTE '\"')", buffer)  # Detailed copy specifications
-    
-    #Create unique ID for each row in the tables
-def create_table_id(cursor):
-    cursor.execute("""
-        ALTER TABLE sales ADD COLUMN id SERIAL PRIMARY KEY;
-    """)
-    cursor.execute("""
-        ALTER TABLE reviews ADD COLUMN id SERIAL PRIMARY KEY;
-    """
-    )
-
 def main():
-    # Establish database connection
     conn = psycopg2.connect(dbname='VgSLDB', user='postgres', password='admin', host='postgres', port='5432')
     cursor = conn.cursor()
     try:
-        
-        # Check if the import process should be skipped
-        if os.environ.get("RUN_IMPORT") != "true":
-            print("Skipping import")
-            exit()
-        
         create_db_tables(cursor)
-        # Process and stream sales data
-        logging.info('Processing sales data')
-        process_and_load_chunks('/app/datasets/vgsales.csv', 'sales', cursor, sales_cleaning)
 
-        # Process and stream reviews data
-        logging.info('Processing reviews data')
-        process_and_load_chunks('/app/datasets/dataset.csv', 'reviews', cursor, reviews_cleaning)
+        logging.info('Processing sales and reviews data')
+        process_and_load_sales_and_reviews('/app/datasets/vgsales.csv', '/app/datasets/dataset.csv', cursor, sales_cleaning, reviews_cleaning)
 
-        # Commit all changes to the database
         conn.commit()
         logging.info('All data committed successfully')
-        
-        create_table_id(cursor)
-        conn.commit()
-        logging.info('All data committed successfully and serial ID added to tables.')
 
     except Exception as e:
-        # Roll back in case of an error
         conn.rollback()
         logging.error(f'Error during database operation: {e}', exc_info=True)
 
     finally:
-        # Close database connections
         cursor.close()
         conn.close()
         logging.info('Database connection closed')
 
-    # Write a file to indicate that the data has been imported
     with open('/data/imported.txt', 'w') as f:
         f.write('Data has been imported')
-        
+
 if __name__ == '__main__':
     main()

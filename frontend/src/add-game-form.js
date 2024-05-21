@@ -44,13 +44,6 @@ const AddGameForm = ({onGameAdded}) => {
             <Input />
           </Form.Item>
           <Form.Item
-            label="Platform"
-            name="platform"
-            rules={[{ required: true, message: 'Please input the platform!' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
             label="Year"
             name="year"
             rules={[{ required: true, message: 'Please input the year!' }]}

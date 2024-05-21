@@ -22,16 +22,21 @@ const pool = new Pool({
 
 // Get all games and review count
 app.get('/games', async (req, res) => {
+  const {page = 1, limit = 10, sort_by = 'name', sort_order = 'ASC'} = req.query;
+  const offset = (page - 1) * limit;
   try {
+    //do with ID
       const result = await pool.query(`
         SELECT s.*, COALESCE(r.review_count, 0) as review_count
         FROM sales s
         LEFT JOIN (
-            SELECT app_name, COUNT(*) as review_count
+            SELECT app_id, COUNT(*) as review_count
             FROM reviews
-            GROUP BY app_name
-        ) r ON s.name = r.app_name;
-      `);
+            GROUP BY app_id
+        ) r ON s.id = r.app_id;
+        ORDER BY s.${sort_by} ${sort_order};
+        LIMIT $1 OFFSET $2;
+      `, [limit, offset]);
       res.json(result.rows);
   } catch (err) {
       console.error(err);
@@ -41,11 +46,11 @@ app.get('/games', async (req, res) => {
 
 // Post game by id
 app.post('/sales', async (req, res) => {
-  const { rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
+  const { rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO sales (rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-      [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales]
+      'INSERT INTO sales (rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -57,11 +62,11 @@ app.post('/sales', async (req, res) => {
 // Update game by id
 app.put('/sales/:id', async (req, res) => {
   const { id } = req.params;
-  const { rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
+  const { rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE sales SET rank = $1, name = $2, platform = $3, year = $4, genre = $5, publisher = $6, na_sales = $7, eu_sales = $8, jp_sales = $9, other_sales = $10, global_sales = $11 WHERE id = $12 RETURNING *',
-      [rank, name, platform, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales, id]
+      'UPDATE sales SET rank = $1, name = $2, year = $3, genre = $4, publisher = $5, na_sales = $6, eu_sales = $7, jp_sales = $8, other_sales = $9, global_sales = $10 WHERE id = $11 RETURNING *',
+      [rank, name, year, genre, publisher, na_sales, eu_sales, jp_sales, other_sales, global_sales, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Game not found' });
@@ -75,6 +80,9 @@ app.put('/sales/:id', async (req, res) => {
 // Get reviews by game name
 app.get('/reviews/:gameName', async (req, res) => {
   const { gameName } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  const offset = (page - 1) * limit;
   try {
     const result = await pool.query(
       `SELECT * FROM (
@@ -82,7 +90,7 @@ app.get('/reviews/:gameName', async (req, res) => {
         FROM reviews
         WHERE reviews.app_name = $1 AND reviews.review_score = 1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
-        LIMIT 10
+        LIMIT $2 OFFSET $3
       ) AS PositiveReviews
       UNION ALL
       SELECT * FROM (
@@ -90,8 +98,8 @@ app.get('/reviews/:gameName', async (req, res) => {
         FROM reviews
         WHERE reviews.app_name = $2 AND reviews.review_score = -1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
-        LIMIT 10
-      ) AS NegativeReviews`, [gameName, gameName]
+        LIMIT $2 OFFSET $3
+      ) AS NegativeReviews`, [gameName, limit, offset, gameName, limit, offset]
     );
     if (result.rows.length > 0) {
       res.json(result.rows);
@@ -134,5 +142,31 @@ app.delete('/reviews/:id', async (req, res) => {
   } catch (err) {
     console.error('Failed to delete review:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.sort('/games', async (req, res) => {
+  const { sort_by = 'name', sort_order = 'ASC' } = req.query;
+  try {
+    const result = await pool.query(
+      `SELECT * FROM sales ORDER BY ${sort_by} ${sort_order};`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to retrieve games:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+app.search('/games', async (req, res) => {
+  const { search } = req.query;
+  try {
+    const result = await pool.query(
+      `SELECT * FROM sales WHERE name ILIKE $1;`, [`%${search}%`]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Failed to search games:', err);
+    res.status(500).send('Server error');
   }
 });
