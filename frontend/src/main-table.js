@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Table, Modal, Button, Form, Input } from "antd";
 import axios from "axios";
+import { SearchOutlined } from "@ant-design/icons";
+
+const backendURL = process.env.REACT_APP_BACKEND_URL || "http://backend:5000";
 
 console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL);
 
@@ -42,7 +45,7 @@ const ReviewForm = ({ gameName, setReviews }) => {
   const handleReviewSubmit = async (values) => {
     const { reviewText, reviewScore } = values;
     try {
-      const response = await axios.post("http://localhost:5000/reviews", {
+      const response = await axios.post("http://backend:5000/reviews", {
         app_name: gameName,
         review_text: reviewText,
         review_score: reviewScore,
@@ -89,32 +92,34 @@ const MainTable = () => {
   const [reviews, setReviews] = useState([]);
   const [sortOrder, setSortOrder] = useState("ascend");
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [searchColumns, setSearchColumns] = useState({});
+  const [total, setTotal] = useState(0);
 
   // Fetch game data when the component mounts or when the sort order changes or when the pagination changes
-  useEffect(() => {
-    const fetchGames = async () => {
+    const fetchGames = async (page = 1, limit = 10, sortBy = "name", sortOrder = "ASC", searchParams = "") => {
       try {
-        const response = await axios.get(`/games`, {
+        const response = await axios.get(`${backendURL}/games`, {
           params: {
-            page: pagination.current,
-            limit: pagination.pageSize,
-            sort_by: "rank",
-            sort_order: sortOrder === "ascend" ? "asc" : "desc",
+            page,
+            limit,
+            sort_by: sortBy,
+            sort_order: sortOrder,
+            search: searchParams,
           },
         });
         setGames(response.data);
         setFilter(response.data);
-        setPagination({
-          ...params.pagination,
-          total: response.data.total,
-        });
+        setTotal(response.data.total);
       } catch (err) {
         console.error("Error fetching data: ", err);
       }
     };
 
-    fetchGames();
-  }, []);
+
+  useEffect(() => {
+    fetchGames(pagination.current, pagination.pageSize, "name", sortOrder, searchText);
+  }, [sortOrder, pagination, searchText]);
+  
 
   // Fetch reviews when a game is selected
   useEffect(() => {
@@ -122,7 +127,7 @@ const MainTable = () => {
       console.log("Fetching reviews for game:", selectedGame.name);
       axios
         .get(
-          `http://localhost:5000/reviews/${encodeURIComponent(
+          `http://backend:5000/reviews/${encodeURIComponent(
             selectedGame.name
           )}`
         )
@@ -147,7 +152,7 @@ const MainTable = () => {
   // Function to handle review deletion
   const handleDeleteReview = async (review) => {
     try {
-      await axios.delete(`http://localhost:5000/reviews/${review.id}`);
+      await axios.delete(`http://backend:5000/reviews/${review.id}`);
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       console.log("Review deleted successfully");
     } catch (error) {
@@ -157,16 +162,44 @@ const MainTable = () => {
   const reviewColumns = reviewTable(handleDeleteReview);
 
   // Function to handle search
-  const handleSearch = (event) => {
-    const value = event.target.value;
-    setSearchText(value);
-    const filteredData = games.filter((game) => {
-      return Object.keys(game).some((key) =>
-        game[key].toString().toLowerCase().includes(value.toLowerCase())
-      );
-    });
-    setFilter(filteredData);
+  const handleSearch = (selectedKeys, confirm, dataIndex) => {
+   confirm();
+   setSearchColumns({ ...searchColumns, [dataIndex]: selectedKeys[0] });
+
   };
+
+  const handleReset = (clearFilters, dataIndex) => {
+    clearFilters();
+    setSearchColumns({ ...searchColumns, [dataIndex]:""});
+  };
+
+  const getColumnSearchProps = (dataIndex) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }}>
+        <Input
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange = {e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
+          style={{ width: 188, marginBottom: 8, display: 'block' }}
+        />
+        <Button
+        type = "primary"
+        onClick = {() => handleSearch(selectedKeys, confirm, dataIndex)}
+        size = "small"
+        style={{ width: 90, marginRight: 8 }}        
+        >
+          Search
+        </Button>
+        <Button onClick = {() => handleReset(clearFilters, dataIndex)} size = "small" style = {{ width: 90 }}>
+          Reset
+        </Button>
+      </div>
+    ),
+    filterIcon: (filtered) => <SearchOutlined style = {{ color: filtered ? '#1890ff' : undefined }} />,
+    onFilter: (value, record) => record[dataIndex].toString().toLowerCase().includes(value.toLowerCase()),
+  });
+
 
   const showModal = (game) => {
     setSelectedGame(game);
@@ -194,7 +227,7 @@ const MainTable = () => {
   const handleSave = async () => {
     try {
       const response = await axios.put(
-        `http://localhost:5000/sales/${selectedGame.id}`,
+        `http://backend:5000/sales/${selectedGame.id}`,
         selectedGame
       );
       if (response.status === 200) {
@@ -225,6 +258,7 @@ const MainTable = () => {
       dataIndex: "rank",
       key: "rank",
       sorter: true,
+      ...getColumnSearchProps("rank"),
     },
     {
       title: "Name",
@@ -234,69 +268,80 @@ const MainTable = () => {
         <button onClick={() => showModal(record)}>{text}</button>
       ),
       sorter: true,
+      ...getColumnSearchProps("name"),
     },
     {
       title: "Year",
       dataIndex: "year",
       key: "year",
       sorter: true,
+      ...getColumnSearchProps("year"),
     },
     {
       title: "Genre",
       dataIndex: "genre",
       key: "genre",
       sorter: true,
+      ...getColumnSearchProps("genre"),
     },
     {
       title: "Publisher",
       dataIndex: "publisher",
       key: "publisher",
       sorter: true,
+      ...getColumnSearchProps("publisher"),
     },
     {
       title: "North America Sales",
       dataIndex: "na_sales",
       key: "na_sales",
       sorter: true,
+      ...getColumnSearchProps("na_sales"),
     },
     {
       title: "Europe Sales",
       dataIndex: "eu_sales",
       key: "eu_sales",
       sorter: true,
+      ...getColumnSearchProps("eu_sales"),
     },
     {
       title: "Japan Sales",
       dataIndex: "jp_sales",
       key: "jp_sales",
       sorter: true,
+      ...getColumnSearchProps("jp_sales"),
     },
     {
       title: "Other Sales",
       dataIndex: "other_sales",
       key: "other_sales",
       sorter: true,
+      ...getColumnSearchProps("other_sales"),
     },
     {
       title: "Global Sales",
       dataIndex: "global_sales",
       key: "global_sales",
       sorter: true,
+      ...getColumnSearchProps("global_sales"),
     },
     {
       title: "Review Count",
       dataIndex: "review_count",
       key: "review_count",
       sorter: true,
+      ...getColumnSearchProps("review_count"),
     },
   ];
 
   const handleTableChange = (pagination, filters, sorter) => {
     console.log("Table change:", pagination, filters, sorter);
     setPagination(pagination);
-    setSortField(sorter.field);
-    setSortOrder(sorter.order);
-    fetchGames({ pagination, sorter });
+    setSortOrder(sorter);
+    //const sortBy = sorter.field || "name";
+    const sortBy = "name";
+    fetchGames(pagination.current, pagination.pageSize, sortBy, sorter.order, searchText);
   };
 // Render modal and table
 return (
@@ -304,14 +349,19 @@ return (
     <Input
       placeholder="Search"
       value={searchText}
-      onChange={handleSearch}
+      onChange={(e) => setSearchText(e.target.value)}
       style={{ marginBottom: 16, width: 200 }}
     />
     <Table
       dataSource={filter}
       columns={columns}
       rowKey="id"
-      onChange={handleTableChange()}
+      //onChange={handleTableChange()}
+      pagination={{
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+        total: total,
+      }}
     />
     {selectedGame && (
       <Modal
@@ -387,7 +437,6 @@ return (
           </Form>
         ) : (
           <>
-            <p>Platform: {selectedGame.platform}</p>
             <p>Publisher: {selectedGame.publisher}</p>
             <p>Year: {selectedGame.year}</p>
             <p>Genre: {selectedGame.genre}</p>

@@ -2,6 +2,10 @@ const express = require("express");
 const parser = require("body-parser");
 const app = express();
 const PORT = process.env.PORT || 5000;
+const cors = require("cors");
+
+app.use(cors());
+
 
 app.use(express.json());
 
@@ -27,10 +31,27 @@ app.get("/games", async (req, res) => {
     limit = 10,
     sort_by = "name",
     sort_order = "ASC",
+    search = "",
   } = req.query;
   const offset = (page - 1) * limit;
+  const validation= ["rank", "name", "year", "genre", "publisher", "na_sales", "eu_sales", "jp_sales", "other_sales", "global_sales", "review_count"];
+  
+  const sortBy= validation.includes(sort_by) ? sort_by : "name";
+  const sortOrder= ["ASC", "DESC"].includes(sort_order) ? sort_order : "ASC";
+  const searchQuery = search ? `WHERE s.name ILIKE $3 OR s.genre ILIKE $3 OR s.publisher ILIKE $3` : "";
+  const searchValue = `%${search}%`;
+
+  
   try {
-    //do with ID
+    const countResult = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM sales s
+    ${search ? `WHERE s.name ILIKE $1 OR s.genre ILIKE $1 OR s.publisher ILIKE $1` : ""}`, 
+    search ? [`%${search}%`] : []);
+    
+    const total = countResult.rows[0].total;
+  
+
     const result = await pool.query(
       `
         SELECT s.*, COALESCE(r.review_count, 0) as review_count
@@ -39,18 +60,20 @@ app.get("/games", async (req, res) => {
             SELECT app_id, COUNT(*) as review_count
             FROM reviews
             GROUP BY app_id
-        ) r ON s.id = r.app_id;
-        ORDER BY s.${sort_by} ${sort_order};
+        ) r ON s.id = r.app_id
+        ${searchQuery}
+        ORDER BY s.${sortBy} ${sortOrder}
         LIMIT $1 OFFSET $2;
       `,
-      [limit, offset]
+      search ? [limit, offset, searchValue] : [limit, offset]
     );
-    res.json(result.rows);
+    res.json({total, data: result.rows});
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
+ 
 
 // Post game by id
 app.post("/sales", async (req, res) => {
@@ -143,7 +166,7 @@ app.get("/reviews/:gameName", async (req, res) => {
         FROM reviews
         WHERE reviews.app_name = $1 AND reviews.review_score = 1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
-        LIMIT $2 OFFSET $3
+        LIMIT $2 OFFSET $3 
       ) AS PositiveReviews
       UNION ALL
       SELECT * FROM (
@@ -203,29 +226,4 @@ app.delete("/reviews/:id", async (req, res) => {
   }
 });
 
-app.sort("/games", async (req, res) => {
-  const { sort_by = "name", sort_order = "ASC" } = req.query;
-  try {
-    const result = await pool.query(
-      `SELECT * FROM sales ORDER BY ${sort_by} ${sort_order};`
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Failed to retrieve games:", err);
-    res.status(500).send("Server error");
-  }
-});
 
-app.search("/games", async (req, res) => {
-  const { search } = req.query;
-  try {
-    const result = await pool.query(
-      `SELECT * FROM sales WHERE name ILIKE $1;`,
-      [`%${search}%`]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Failed to search games:", err);
-    res.status(500).send("Server error");
-  }
-});
