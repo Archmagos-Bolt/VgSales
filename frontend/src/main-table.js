@@ -89,34 +89,41 @@ const MainTable = () => {
   const [editMode, setEditMode] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [sortBy, setSortBy] = useState([{field: "name", order: "ascend"}])
   const [sortOrder, setSortOrder] = useState("ascend");
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [searchColumns, setSearchColumns] = useState({});
   const [total, setTotal] = useState(0);
 
   // Fetch game data when the component mounts or when the sort order changes or when the pagination changes
-    const fetchGames = async (page = 1, limit = 10, sortBy = "name", sortOrder = "ASC", searchParams = "") => {
-      try {
-        const response = await axios.get(`http://localhost:5000/games`, {
-          params: {
-            page,
-            limit,
-            sort_by: sortBy,
-            sort_order: sortOrder,
-            search: searchParams,
-          },
-        });
-        setGames(response.data.data);
-        setTotal(response.data.total);
-      } catch (err) {
-        console.error("Error fetching data: ", err);
-      }
-    };
+  const fetchGames = async (page = 1, limit = 10, sortBy=[{field: "name", order: "ascend"}], searchParams = {}) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/games`, {
+        params: {
+          page,
+          limit,
+          sort_by: sortBy.map(sort => sort.field ).join(','),
+          sort_order: sortBy.map((sort) => sort.order=== 'descend' ? 'DESC' : 'ASC' ).join(","),
+          ...searchParams,
+        },
+      });
+      setGames(response.data.data);
+      setTotal(response.data.total);
+  } catch (err) {
+      console.error("Error fetching data: ", err);
+     }
+  };
 
 
   useEffect(() => {
-    fetchGames(pagination.current, pagination.pageSize, "name", sortOrder, searchText);
-}, [pagination, sortOrder, searchText]);
+    const searchParams = Object.entries(searchColumns).reduce((acc, [key, value]) => {
+      if (value) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+    fetchGames(pagination.current, pagination.pageSize, sortBy, searchParams);
+}, [pagination, sortBy, sortOrder, searchColumns]);
   
 
   // Fetch reviews when a game is selected
@@ -146,7 +153,7 @@ const MainTable = () => {
     } else {
       setReviews([]);
     }
-  }, [selectedGame, editMode]);
+  }, [selectedGame, editMode, searchColumns]);
 
   // Function to handle review deletion
   const handleDeleteReview = async (review) => {
@@ -335,12 +342,25 @@ const MainTable = () => {
   ];
 
   const handleTableChange = (newPagination, filters, sorter) => {
-    const sortBy = sorter.field || "name";
-    const sortOrder = sorter.order === "descend" ? "DESC" : "ASC";
-    fetchGames(newPagination.current, newPagination.pageSize, sortBy, sortOrder, searchText);
+    let sortBy=[];
+    if (Array.isArray(sorter)){
+      sortBy = sorter.map(s=>({field: s.field, order: s.order}));
+    }
+    else {
+      sortBy = [{field: sorter.field || "name", order: sorter.order === "descend" ? "DESC" : "ASC"}];
+    }
+    const searchParams = Object.entries(searchColumns).reduce((acc, [key, value]) => {
+      if (value) {
+        acc[key] = value;
+      }
+      return acc;
+    }
+    , {});
+    fetchGames(newPagination.current, newPagination.pageSize, sortBy, searchParams);
     setPagination(newPagination);
-    setSortOrder(sortOrder);
+    setSortBy(sortBy);    
   };
+
 // Render modal and table
 return (
   <>

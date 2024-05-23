@@ -36,22 +36,44 @@ app.get("/games", async (req, res) => {
     sort_by = "name",
     sort_order = "ASC",
     search = "",
+    ...columnSearch
   } = req.query;
   const offset = (page - 1) * limit;
   const validation= ["rank", "name", "year", "genre", "publisher", "na_sales", "eu_sales", "jp_sales", "other_sales", "global_sales", "review_count"];
   
   const sortBy= validation.includes(sort_by) ? sort_by : "name";
   const sortOrder= ["ASC", "DESC"].includes(sort_order) ? sort_order : "ASC";
-  const searchQuery = search ? `WHERE s.name ILIKE $3 OR s.genre ILIKE $3 OR s.publisher ILIKE $3` : "";
   const searchValue = `%${search}%`;
+
+  let searchConditions = [];
+  let searchValues = [];
+  let index = 1; // Start indexing from 1
+
+if (search) {
+  searchConditions.push(`(s.name ILIKE $${index} OR s.genre ILIKE $${index} OR s.publisher ILIKE $${index}) OR s.year::text ILIKE $${index} OR s.na_sales::text ILIKE $${index} OR s.eu_sales::text ILIKE $${index} OR s.jp_sales::text ILIKE $${index} OR s.other_sales::text ILIKE $${index} OR s.global_sales::text ILIKE $${index}`);
+  searchValues.push(`%${search}%`);
+  index++;
+}
+
+Object.entries(columnSearch).forEach(([key, value]) => {
+  if (validation.includes(key)) {
+    searchConditions.push(`s.${key}::text ILIKE $${index}`);
+    searchValues.push(`%${value}%`);
+    index++;
+  }
+});
+
+const searchQuery = searchConditions.length > 0 ? `WHERE ${searchConditions.join(" AND ")}` : "";
+
 
   
   try {
-    const countResult = await pool.query(`
-    SELECT COUNT(*) AS total
-    FROM sales s
-    ${search ? `WHERE s.name ILIKE $1 OR s.genre ILIKE $1 OR s.publisher ILIKE $1` : ""}`, 
-    search ? [`%${search}%`] : []);
+    const countResult = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM sales s
+       ${searchQuery}`,
+      searchValues
+    );
     
     const total = countResult.rows[0].total;
   
@@ -67,9 +89,9 @@ app.get("/games", async (req, res) => {
         ) r ON s.id = r.app_id
         ${searchQuery}
         ORDER BY s.${sortBy} ${sortOrder}
-        LIMIT $1 OFFSET $2;
+        LIMIT $${index} OFFSET $${index + 1};
       `,
-      search ? [limit, offset, searchValue] : [limit, offset]
+      [...searchValues, limit, offset]
     );
     res.json({total, data: result.rows});
   } catch (err) {
