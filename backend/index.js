@@ -4,8 +4,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const cors = require("cors");
 
-app.use(cors());
+const corsOptions = {
+  origin: 'http://localhost:3000/',
+  optionsSuccessStatus: 200,
+};
 
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -154,8 +158,8 @@ app.put("/sales/:id", async (req, res) => {
 });
 
 // Get reviews by game name
-app.get("/reviews/:gameName", async (req, res) => {
-  const { gameName } = req.params;
+app.get("/reviews/:gameId", async (req, res) => {
+  const { gameId } = req.params;
   const { page = 1, limit = 10 } = req.query;
 
   const offset = (page - 1) * limit;
@@ -164,7 +168,7 @@ app.get("/reviews/:gameName", async (req, res) => {
       `SELECT * FROM (
         SELECT reviews.review_text, reviews.review_score, reviews.review_votes, reviews.id
         FROM reviews
-        WHERE reviews.app_name = $1 AND reviews.review_score = 1
+        WHERE reviews.app_id = $1 AND reviews.review_score = 1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
         LIMIT $2 OFFSET $3 
       ) AS PositiveReviews
@@ -172,12 +176,13 @@ app.get("/reviews/:gameName", async (req, res) => {
       SELECT * FROM (
         SELECT reviews.review_text, reviews.review_score, reviews.review_votes, reviews.id
         FROM reviews
-        WHERE reviews.app_name = $2 AND reviews.review_score = -1
+        WHERE reviews.app_id = $2 AND reviews.review_score = -1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
         LIMIT $2 OFFSET $3
       ) AS NegativeReviews`,
-      [gameName, limit, offset, gameName, limit, offset]
+      [gameId, limit, offset, gameId, limit, offset]
     );
+    console.log("Query Result:", result.rows); 
     if (result.rows.length > 0) {
       res.json(result.rows);
     } else {

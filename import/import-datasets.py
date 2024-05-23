@@ -116,7 +116,7 @@ def sales_cleaning(df):
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         # Group by Name, Year, Genre, and Publisher to sum the sales
-        df = df.groupby(['Name', 'Year', 'Genre', 'Publisher'], as_index=False).agg({
+        df_grouped = df.groupby(['Name', 'Year', 'Genre', 'Publisher'], as_index=False).agg({
             'NA_Sales': 'sum',
             'EU_Sales': 'sum',
             'JP_Sales': 'sum',
@@ -124,8 +124,9 @@ def sales_cleaning(df):
             'Global_Sales': 'sum'
         })
 
-
-        return df
+        df_grouped = df_grouped.drop_duplicates(subset=['Name', 'Year', 'Genre', 'Publisher'])
+        
+        return df_grouped
     except Exception as e:
         logging.error(f'Error cleaning sales data: {e}', exc_info=True)
         return pd.DataFrame()

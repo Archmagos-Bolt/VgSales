@@ -26,15 +26,15 @@ services:
     restart: always
 
   frontend:
-    build: ./frontend
-    environment:
-      - REACT_APP_BACKEND_URL=http://backend:5000
-    volumes:
-      - ./frontend:/react-docker-example
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+     build: ./frontend
+     environment:
+       - REACT_APP_BACKEND_URL=http://backend:5000
+     volumes:
+       - ./frontend:/react-docker-example
+     ports:
+       - "3000:3000"
+     depends_on:
+       - backend
 
   importer:
     build: ./import
@@ -44,6 +44,7 @@ services:
     volumes:
       - ./import/datasets:/app/datasets
       - ./data:/data
+    command: sleep 1000000
     depends_on: 
       - postgres
 

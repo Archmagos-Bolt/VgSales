@@ -3,7 +3,6 @@ import { Table, Modal, Button, Form, Input } from "antd";
 import axios from "axios";
 import { SearchOutlined } from "@ant-design/icons";
 
-const backendURL = process.env.REACT_APP_BACKEND_URL || "http://backend:5000";
 
 console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL);
 
@@ -45,13 +44,13 @@ const ReviewForm = ({ gameName, setReviews }) => {
   const handleReviewSubmit = async (values) => {
     const { reviewText, reviewScore } = values;
     try {
-      const response = await axios.post("http://backend:5000/reviews", {
+      const response = await axios.post("http://localhost:5000/reviews", {
         app_name: gameName,
         review_text: reviewText,
         review_score: reviewScore,
       });
-      console.log("Review added:", response.data);
-      setReviews((prev) => [...prev, response.data]);
+      console.log("Review added:", response.data.data);
+      setReviews((prev) => [...prev, response.data.data]);
       form.resetFields();
     } catch (error) {
       console.error("Error adding review:", error);
@@ -98,7 +97,7 @@ const MainTable = () => {
   // Fetch game data when the component mounts or when the sort order changes or when the pagination changes
     const fetchGames = async (page = 1, limit = 10, sortBy = "name", sortOrder = "ASC", searchParams = "") => {
       try {
-        const response = await axios.get(`${backendURL}/games`, {
+        const response = await axios.get(`http://localhost:5000/games`, {
           params: {
             page,
             limit,
@@ -107,8 +106,7 @@ const MainTable = () => {
             search: searchParams,
           },
         });
-        setGames(response.data);
-        setFilter(response.data);
+        setGames(response.data.data);
         setTotal(response.data.total);
       } catch (err) {
         console.error("Error fetching data: ", err);
@@ -118,24 +116,25 @@ const MainTable = () => {
 
   useEffect(() => {
     fetchGames(pagination.current, pagination.pageSize, "name", sortOrder, searchText);
-  }, [sortOrder, pagination, searchText]);
+}, [pagination, sortOrder, searchText]);
   
 
   // Fetch reviews when a game is selected
   useEffect(() => {
     if (selectedGame && !editMode) {
-      console.log("Fetching reviews for game:", selectedGame.name);
+      console.log("Fetching reviews for game:", selectedGame.id);
       axios
         .get(
-          `http://backend:5000/reviews/${encodeURIComponent(
-            selectedGame.name
+          `http://localhost:5000/reviews/${encodeURIComponent(
+            selectedGame.id
           )}`
         )
         .then((res) => {
-          if (Array.isArray(res.data)) {
-            setReviews(res.data);
+          console.log("Fetched Reviews:", res.data.data); 
+          if (Array.isArray(res.data.data)) {
+            setReviews(res.data.data);
           } else {
-            console.error("Expected reviews to be an array but got:", res.data);
+            console.error("Expected reviews to be an array but got:", res.data.data);
           }
         })
         .catch((err) => {
@@ -152,7 +151,7 @@ const MainTable = () => {
   // Function to handle review deletion
   const handleDeleteReview = async (review) => {
     try {
-      await axios.delete(`http://backend:5000/reviews/${review.id}`);
+      await axios.delete(`http://localhost:5000/reviews/${review.id}`);
       setReviews((prev) => prev.filter((r) => r.id !== review.id));
       console.log("Review deleted successfully");
     } catch (error) {
@@ -227,7 +226,7 @@ const MainTable = () => {
   const handleSave = async () => {
     try {
       const response = await axios.put(
-        `http://backend:5000/sales/${selectedGame.id}`,
+        `http://localhost:5000/sales/${selectedGame.id}`,
         selectedGame
       );
       if (response.status === 200) {
@@ -238,7 +237,7 @@ const MainTable = () => {
         setFilter(updatedGames);
         setIsModalVisible(false);
         setEditMode(false);
-        console.log("Game details updated:", response.data);
+        console.log("Game details updated:", response.data.data);
       }
     } catch (error) {
       console.error("Failed to update game details:", error);
@@ -335,13 +334,12 @@ const MainTable = () => {
     },
   ];
 
-  const handleTableChange = (pagination, filters, sorter) => {
-    console.log("Table change:", pagination, filters, sorter);
-    setPagination(pagination);
-    setSortOrder(sorter);
-    //const sortBy = sorter.field || "name";
-    const sortBy = "name";
-    fetchGames(pagination.current, pagination.pageSize, sortBy, sorter.order, searchText);
+  const handleTableChange = (newPagination, filters, sorter) => {
+    const sortBy = sorter.field || "name";
+    const sortOrder = sorter.order === "descend" ? "DESC" : "ASC";
+    fetchGames(newPagination.current, newPagination.pageSize, sortBy, sortOrder, searchText);
+    setPagination(newPagination);
+    setSortOrder(sortOrder);
   };
 // Render modal and table
 return (
@@ -353,10 +351,10 @@ return (
       style={{ marginBottom: 16, width: 200 }}
     />
     <Table
-      dataSource={filter}
+      dataSource={games}
       columns={columns}
       rowKey="id"
-      //onChange={handleTableChange()}
+      onChange={handleTableChange}
       pagination={{
         current: pagination.current,
         pageSize: pagination.pageSize,
