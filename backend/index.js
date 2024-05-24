@@ -224,13 +224,16 @@ app.get("/reviews/:gameId", async (req, res) => {
 
 // Add reviews by game name
 app.post("/reviews", async (req, res) => {
-  const { app_name, review_text, review_score, review_votes } = req.body;
+  const { app_name, review_text, review_score} = req.body;
+  if (!app_name || !review_text || review_score === undefined) {
+    return res.status(400).send({ message: "Missing required fields" });
+  }
   try {
     const result = await pool.query(
-      "INSERT INTO reviews (app_name, review_text, review_score, review_votes) VALUES ($1, $2, $3, $4) RETURNING *",
-      [app_name, review_text, review_score, review_votes]
+      "INSERT INTO reviews (app_name, review_text, review_score) VALUES ($1, $2, $3) RETURNING *",
+      [app_name, review_text, review_score]
     );
-    res.status(201).json(result.rows[0]);
+    res.status(201).json({data: result.rows[0]});
   } catch (err) {
     console.error("Failed to insert review:", err);
     res.status(500).json({ error: "Server error" });
