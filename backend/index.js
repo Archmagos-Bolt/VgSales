@@ -35,48 +35,53 @@ app.get("/games", async (req, res) => {
     limit = 10,
     sort_by = "name",
     sort_order = "ASC",
-    search = "",
+    general = "",
     ...columnSearch
   } = req.query;
   const offset = (page - 1) * limit;
-  const validation= ["rank", "name", "year", "genre", "publisher", "na_sales", "eu_sales", "jp_sales", "other_sales", "global_sales", "review_count"];
-  
-  const sortBy= validation.includes(sort_by) ? sort_by : "name";
-  const sortOrder= ["ASC", "DESC"].includes(sort_order) ? sort_order : "ASC";
-  const searchValue = `%${search}%`;
+  const validation = [
+    "rank", "name", "year", "genre", "publisher", "na_sales", 
+    "eu_sales", "jp_sales", "other_sales", "global_sales", 
+    "review_count"
+  ];
+
+  const sortByArray = Array.isArray(sort_by) ? sort_by : [sort_by];
+  const sortOrderArray = Array.isArray(sort_order) ? sort_order : [sort_order];
+
+  const sortQuery = sortByArray.map((col, idx) => {
+    const direction = sortOrderArray[idx] || sortOrderArray[0] || "ASC";
+    return `${validation.includes(col) ? col : 'name'} ${["ASC", "DESC"].includes(direction) ? direction : 'ASC'}`;
+  }).join(", ");
 
   let searchConditions = [];
   let searchValues = [];
-  let index = 1; // Start indexing from 1
+  let index = 1;
 
-if (search) {
-  searchConditions.push(`(s.name ILIKE $${index} OR s.genre ILIKE $${index} OR s.publisher ILIKE $${index}) OR s.year::text ILIKE $${index} OR s.na_sales::text ILIKE $${index} OR s.eu_sales::text ILIKE $${index} OR s.jp_sales::text ILIKE $${index} OR s.other_sales::text ILIKE $${index} OR s.global_sales::text ILIKE $${index}`);
-  searchValues.push(`%${search}%`);
-  index++;
-}
-
-Object.entries(columnSearch).forEach(([key, value]) => {
-  if (validation.includes(key)) {
-    searchConditions.push(`s.${key}::text ILIKE $${index}`);
-    searchValues.push(`%${value}%`);
+  if (general) {
+    searchConditions.push(`(s.name ILIKE $${index} OR s.genre ILIKE $${index} OR s.publisher ILIKE $${index} OR s.year::text ILIKE $${index} OR s.na_sales::text ILIKE $${index} OR s.eu_sales::text ILIKE $${index} OR s.jp_sales::text ILIKE $${index} OR s.other_sales::text ILIKE $${index} OR s.global_sales::text ILIKE $${index})`);
+    searchValues.push(`%${general}%`);
     index++;
   }
-});
 
-const searchQuery = searchConditions.length > 0 ? `WHERE ${searchConditions.join(" AND ")}` : "";
+  Object.entries(columnSearch).forEach(([key, value]) => {
+    if (validation.includes(key)) {
+      searchConditions.push(`s.${key}::text ILIKE $${index}`);
+      searchValues.push(`%${value}%`);
+      index++;
+    }
+  });
 
+  const combinedSearchQuery = searchConditions.length > 0 ? `WHERE ${searchConditions.join(" AND ")}` : "";
 
-  
   try {
     const countResult = await pool.query(
       `SELECT COUNT(*) AS total
        FROM sales s
-       ${searchQuery}`,
+       ${combinedSearchQuery}`,
       searchValues
     );
-    
+
     const total = countResult.rows[0].total;
-  
 
     const result = await pool.query(
       `
@@ -87,19 +92,19 @@ const searchQuery = searchConditions.length > 0 ? `WHERE ${searchConditions.join
             FROM reviews
             GROUP BY app_id
         ) r ON s.id = r.app_id
-        ${searchQuery}
-        ORDER BY s.${sortBy} ${sortOrder}
+        ${combinedSearchQuery}
+        ORDER BY ${sortQuery}
         LIMIT $${index} OFFSET $${index + 1};
       `,
       [...searchValues, limit, offset]
     );
-    res.json({total, data: result.rows});
+    res.json({ total, data: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
- 
+
 
 // Post game by id
 app.post("/sales", async (req, res) => {
@@ -179,12 +184,13 @@ app.put("/sales/:id", async (req, res) => {
   }
 });
 
-// Get reviews by game name
+// Get reviews by game id
 app.get("/reviews/:gameId", async (req, res) => {
   const { gameId } = req.params;
   const { page = 1, limit = 10 } = req.query;
 
   const offset = (page - 1) * limit;
+  console.log(gameId, limit, offset)
   try {
     const result = await pool.query(
       `SELECT * FROM (
@@ -198,15 +204,15 @@ app.get("/reviews/:gameId", async (req, res) => {
       SELECT * FROM (
         SELECT reviews.review_text, reviews.review_score, reviews.review_votes, reviews.id
         FROM reviews
-        WHERE reviews.app_id = $2 AND reviews.review_score = -1
+        WHERE reviews.app_id = $4 AND reviews.review_score = -1
         ORDER BY reviews.review_votes DESC, reviews.review_text ASC
-        LIMIT $2 OFFSET $3
+        LIMIT $5 OFFSET $6
       ) AS NegativeReviews`,
       [gameId, limit, offset, gameId, limit, offset]
     );
     console.log("Query Result:", result.rows); 
     if (result.rows.length > 0) {
-      res.json(result.rows);
+      res.json({data: result.rows});
     } else {
       res.status(404).send({ message: "No reviews found for this game." });
     }

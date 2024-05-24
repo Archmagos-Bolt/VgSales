@@ -34,7 +34,7 @@ const AddGameForm = ({ onGameAdded }) => {
           <Form.Item
             label="Rank"
             name="rank"
-            rules={[{ required: true, message: "Please input the rank!" }]}
+            rules={[{ required: false, message: "Please input the rank!" }]}
           >
             <Input />
           </Form.Item>

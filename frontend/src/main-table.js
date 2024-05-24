@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Modal, Button, Form, Input } from "antd";
 import axios from "axios";
 import { SearchOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
 
 
 console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL);
@@ -81,7 +82,6 @@ const ReviewForm = ({ gameName, setReviews }) => {
 };
 
 const MainTable = () => {
-  // Set up modal states
   const [games, setGames] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filter, setFilter] = useState([]);
@@ -89,41 +89,58 @@ const MainTable = () => {
   const [editMode, setEditMode] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [sortBy, setSortBy] = useState([{field: "name", order: "ascend"}])
-  const [sortOrder, setSortOrder] = useState("ascend");
+  const [sortBy, setSortBy] = useState([{ field: "name", order: "ascend" }]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [searchColumns, setSearchColumns] = useState({});
   const [total, setTotal] = useState(0);
 
-  // Fetch game data when the component mounts or when the sort order changes or when the pagination changes
-  const fetchGames = async (page = 1, limit = 10, sortBy=[{field: "name", order: "ascend"}], searchParams = {}) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/games`, {
-        params: {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const fetchGames = async (page = 1, limit = 10, sortBy = [{ field: "name", order: "ascend" }], searchParams = {}) => {
+        const params = {
           page,
           limit,
-          sort_by: sortBy.map(sort => sort.field ).join(','),
-          sort_order: sortBy.map((sort) => sort.order=== 'descend' ? 'DESC' : 'ASC' ).join(","),
-          ...searchParams,
-        },
+          sort_by: sortBy.map(sort => sort.field).join(','),
+          sort_order: sortBy.map((sort) => sort.order === 'descend' ? 'DESC' : 'ASC').join(","),
+          ...searchParams,  
+      };
+
+      const queryString = new URLSearchParams(params).toString();
+      navigate(`?${queryString}`)
+
+      try {
+      const response = await axios.get("http://localhost:5000/games", {
+        params,
       });
+
       setGames(response.data.data);
       setTotal(response.data.total);
-  } catch (err) {
+    } catch (err) {
       console.error("Error fetching data: ", err);
-     }
+    }
   };
 
-
   useEffect(() => {
-    const searchParams = Object.entries(searchColumns).reduce((acc, [key, value]) => {
-      if (value) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
-    fetchGames(pagination.current, pagination.pageSize, sortBy, searchParams);
-}, [pagination, sortBy, sortOrder, searchColumns]);
+    
+    const params = new URLSearchParams(location.search);
+    const page = parseInt(params.get('page')) || 1;
+    const limit = parseInt(params.get('limit')) || 10;
+    const sort_by = params.get('sort_by') ? params.get('sort_by').split(',') : ['name'];
+    const sort_order = params.get('sort_order') ? params.get('sort_order').split(',') : ['ascend'];
+
+    const searchParams = { ...searchColumns };
+    if (params.get('general')) {
+      searchParams.general = params.get('general');
+      setSearchText(params.get('general'));
+    }
+    setPagination({ current: page, pageSize: limit });
+    setSortBy(sort_by.map((field, idx) => ({ field, order: sort_order[idx] })));
+
+    fetchGames(page, limit, sort_by.map((field, idx) => ({ field, order: sort_order[idx] || "ascend" })), searchParams);
+    }, [location.search]);
+
+
   
 
   // Fetch reviews when a game is selected
@@ -171,12 +188,16 @@ const MainTable = () => {
   const handleSearch = (selectedKeys, confirm, dataIndex) => {
    confirm();
    setSearchColumns({ ...searchColumns, [dataIndex]: selectedKeys[0] });
-
+   const searchParams = { ...searchColumns, [dataIndex]: selectedKeys[0] };
+   fetchGames(pagination.current, pagination.pageSize, sortBy, searchParams);
   };
 
   const handleReset = (clearFilters, dataIndex) => {
     clearFilters();
     setSearchColumns({ ...searchColumns, [dataIndex]:""});
+    delete searchColumns[dataIndex];
+    setSearchColumns(searchColumns);
+    fetchGames(pagination.current, pagination.pageSize, sortBy, searchColumns);
   };
 
   const getColumnSearchProps = (dataIndex) => ({
@@ -208,9 +229,13 @@ const MainTable = () => {
 
 
   const showModal = (game) => {
-    setSelectedGame(game);
-    setEditMode(false);
-    setIsModalVisible(true);
+    setSelectedGame(null);
+    setTimeout(() =>{
+      setSelectedGame(game);
+      setEditMode(false);
+      setIsModalVisible(true); 
+    }, 0);
+    
   };
 
   // Functions to handle input change, edit toggle, save, and cancel
@@ -342,23 +367,19 @@ const MainTable = () => {
   ];
 
   const handleTableChange = (newPagination, filters, sorter) => {
-    let sortBy=[];
-    if (Array.isArray(sorter)){
-      sortBy = sorter.map(s=>({field: s.field, order: s.order}));
+    let sortByArray = [];
+    if (Array.isArray(sorter)) {
+      sortByArray = sorter.map(s => ({ field: s.field, order: s.order }));
+    } else {
+      sortByArray = [{ field: sorter.field || "name", order: sorter.order }];
     }
-    else {
-      sortBy = [{field: sorter.field || "name", order: sorter.order === "descend" ? "DESC" : "ASC"}];
+    const searchParams = { ...searchColumns };
+    if (searchText) {
+      searchParams.general = searchText;
     }
-    const searchParams = Object.entries(searchColumns).reduce((acc, [key, value]) => {
-      if (value) {
-        acc[key] = value;
-      }
-      return acc;
-    }
-    , {});
-    fetchGames(newPagination.current, newPagination.pageSize, sortBy, searchParams);
+    fetchGames(newPagination.current, newPagination.pageSize, sortByArray, searchParams);
     setPagination(newPagination);
-    setSortBy(sortBy);    
+    setSortBy(sortByArray);
   };
 
 // Render modal and table
@@ -368,6 +389,10 @@ return (
       placeholder="Search"
       value={searchText}
       onChange={(e) => setSearchText(e.target.value)}
+        onPressEnter={() => {
+          const searchParams = { ...searchColumns, general: searchText };
+          fetchGames(pagination.current, pagination.pageSize, sortBy, searchParams);
+        }}
       style={{ marginBottom: 16, width: 200 }}
     />
     <Table
