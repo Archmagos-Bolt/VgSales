@@ -7,12 +7,37 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 console.log("Backend URL:", process.env.REACT_APP_BACKEND_URL);
 
+const TruncatedText = ({text, maxlength = 100}) => {
+  const [isTruncated, setisTruncated] = useState(true);
+
+const toggleTruncate = () => {
+  setisTruncated(!isTruncated);
+};
+
+
+return (
+  <div>
+    <p>
+      {isTruncated ? `${text.slice(0, maxlength)}...` : text}
+      {text.length > maxlength && (
+        <button onClick={toggleTruncate}>
+          {isTruncated ? "Show More" : "Show Less"}
+        </button>
+      )
+    }
+    </p>
+  </div>
+);
+
+};
+
 // Define columns for the review table
 const reviewTable = (handleDeleteReview) => [
   {
     title: "Review Text",
     dataIndex: "review_text",
     key: "review_text",
+    render: (text) => <TruncatedText text={text} maxlength={100} />,
   },
   {
     title: "Review Score",
