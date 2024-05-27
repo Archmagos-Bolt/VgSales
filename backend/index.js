@@ -143,6 +143,29 @@ app.post("/sales", async (req, res) => {
   }
 });
 
+//delete game by id
+app.delete("/sales/:id", async (req, res) => {
+  const {id} = req.params;
+  try {
+    const result = await pool.query(
+      "DELETE FROM sales WHERE id = $1 RETURNING *;",
+      [id]
+    );
+    if (result.rows.length > 0) {
+      res.send({
+        message: "Game deleted successfully",
+        game: result.rows[0],
+      });
+    } else {
+      res.status(404).json({ message: "Game not found" });
+    }
+  } catch (err) {
+    console.error("Failed to delete game:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+  });
+  
+
 // Update game by id
 app.put("/sales/:id", async (req, res) => {
   const { id } = req.params;
@@ -222,16 +245,16 @@ app.get("/reviews/:gameId", async (req, res) => {
   }
 });
 
-// Add reviews by game name
+// Add reviews by game id
 app.post("/reviews", async (req, res) => {
-  const { app_name, review_text, review_score} = req.body;
-  if (!app_name || !review_text || review_score === undefined) {
+  const { app_id, review_text, review_score} = req.body;
+  if (!app_id || !review_text || review_score === undefined) {
     return res.status(400).send({ message: "Missing required fields" });
   }
   try {
     const result = await pool.query(
-      "INSERT INTO reviews (app_name, review_text, review_score) VALUES ($1, $2, $3) RETURNING *",
-      [app_name, review_text, review_score]
+      "INSERT INTO reviews (app_id, review_text, review_score) VALUES ($1, $2, $3) RETURNING *",
+      [app_id, review_text, review_score]
     );
     res.status(201).json({data: result.rows[0]});
   } catch (err) {

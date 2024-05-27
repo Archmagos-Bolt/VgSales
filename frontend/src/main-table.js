@@ -38,7 +38,7 @@ const reviewTable = (handleDeleteReview) => [
 ];
 
 // Create review form component
-const ReviewForm = ({ gameName, setReviews }) => {
+const ReviewForm = ({ gameId, setReviews }) => {
   const [form] = Form.useForm();
 
   // Handle form submission
@@ -46,7 +46,7 @@ const ReviewForm = ({ gameName, setReviews }) => {
     const { reviewText, reviewScore } = values;
     try {
       const response = await axios.post("http://localhost:5000/reviews", {
-        app_name: gameName,
+        app_id: gameId,
         review_text: reviewText,
         review_score: reviewScore,
       });
@@ -489,7 +489,7 @@ return (
             <p>Other Sales: {selectedGame.other_sales}</p>
             <p>Global Sales: {selectedGame.global_sales}</p>
             <h2>Reviews</h2>
-            <ReviewForm gameName={selectedGame.name} setReviews={setReviews} />
+            <ReviewForm gameId={selectedGame.id} setReviews={setReviews} />
             <Table
               dataSource={reviews.filter((review) => review.review_score === 1)}
               columns={reviewColumns}
