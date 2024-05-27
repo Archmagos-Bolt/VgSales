@@ -147,10 +147,14 @@ app.post("/sales", async (req, res) => {
 app.delete("/sales/:id", async (req, res) => {
   const {id} = req.params;
   try {
-    const result = await pool.query(
-      "DELETE FROM sales WHERE id = $1 RETURNING *;",
-      [id]
-    );
+    await pool.query("Begin");
+
+    await pool.query("DELETE FROM reviews WHERE app_id = $1", [id]);
+
+    const result = await pool.query("DELETE FROM sales WHERE id = $1 RETURNING *", [id]);
+
+    await pool.query("COMMIT");
+    
     if (result.rows.length > 0) {
       res.send({
         message: "Game deleted successfully",
@@ -164,7 +168,7 @@ app.delete("/sales/:id", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
   });
-  
+
 
 // Update game by id
 app.put("/sales/:id", async (req, res) => {

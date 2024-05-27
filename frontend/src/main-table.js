@@ -139,8 +139,6 @@ const MainTable = () => {
 
     fetchGames(page, limit, sort_by.map((field, idx) => ({ field, order: sort_order[idx] || "ascend" })), searchParams);
     }, [location.search]);
-
-
   
 
   // Fetch reviews when a game is selected
@@ -171,6 +169,28 @@ const MainTable = () => {
       setReviews([]);
     }
   }, [selectedGame, editMode, searchColumns]);
+
+  const deleteGame = async (gameId) => {
+    console.log("Deleting game with id:", gameId);
+    try {
+      await axios.delete(`http://localhost:5000/sales/${gameId}`);
+      fetchGames(pagination.current, pagination.pageSize, sortBy, searchColumns);
+    } catch (error) {
+      console.error("Failed to delete game:", error);
+    }
+  };
+
+  // Function to handle game deletion
+  const handleDeleteGame = async (game) => {
+      Modal.confirm({
+        title: "Are you sure you want to delete this game?",
+        content: "This action cannot be undone",
+        onOk: () => deleteGame(game.id),
+      });
+    };
+
+      
+
 
   // Function to handle review deletion
   const handleDeleteReview = async (review) => {
@@ -364,6 +384,15 @@ const MainTable = () => {
       sorter: true,
       ...getColumnSearchProps("review_count"),
     },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Button onClick = {() => handleDeleteGame(record)}>
+          Delete
+        </Button>
+      )
+    }
   ];
 
   const handleTableChange = (newPagination, filters, sorter) => {
