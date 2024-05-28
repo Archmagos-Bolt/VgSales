@@ -58,7 +58,7 @@ app.get("/games", async (req, res) => {
   let index = 1;
 
   if (general) {
-    searchConditions.push(`(s.name ILIKE $${index} OR s.genre ILIKE $${index} OR s.publisher ILIKE $${index} OR s.year::text ILIKE $${index} OR s.na_sales::text ILIKE $${index} OR s.eu_sales::text ILIKE $${index} OR s.jp_sales::text ILIKE $${index} OR s.other_sales::text ILIKE $${index} OR s.global_sales::text ILIKE $${index} OR COALESCE(r.review_count, 0)::text ILIKE $${index})`);
+    searchConditions.push(`(s.name ILIKE $${index} OR s.genre ILIKE $${index} OR s.publisher ILIKE $${index} OR s.year::text ILIKE $${index} OR s.na_sales::text ILIKE $${index} OR s.eu_sales::text ILIKE $${index} OR s.jp_sales::text ILIKE $${index} OR s.other_sales::text ILIKE $${index} OR s.global_sales::text ILIKE $${index})`);
     searchValues.push(`%${general}%`);
     index++;
   }
