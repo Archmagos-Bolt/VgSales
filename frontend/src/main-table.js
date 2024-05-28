@@ -450,6 +450,19 @@ return (
         }}
       style={{ marginBottom: 16, width: 200 }}
     />
+    
+    <Button
+      type="primary"
+      title="Reset page"
+      onClick={() => {
+        setSearchText("");
+        setSearchColumns({});
+        fetchGames(1, 10, sortBy, {});
+      }
+    }
+    >
+      Reset
+    </Button>
     <Table
       dataSource={games}
       columns={columns}
