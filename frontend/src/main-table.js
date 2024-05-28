@@ -153,6 +153,7 @@ const MainTable = () => {
     const limit = parseInt(params.get('limit')) || 10;
     const sort_by = params.get('sort_by') ? params.get('sort_by').split(',') : ['name'];
     const sort_order = params.get('sort_order') ? params.get('sort_order').split(',') : ['ascend'];
+    console.log(location.search, page, limit, sort_by, sort_order);
 
     const searchParams = { ...searchColumns };
     if (params.get('general')) {
@@ -163,7 +164,7 @@ const MainTable = () => {
     setSortBy(sort_by.map((field, idx) => ({ field, order: sort_order[idx] })));
 
     fetchGames(page, limit, sort_by.map((field, idx) => ({ field, order: sort_order[idx] || "ascend" })), searchParams);
-    }, [location.search]);
+    }, []);
   
 
   // Fetch reviews when a game is selected

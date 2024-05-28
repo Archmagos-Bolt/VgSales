@@ -39,7 +39,6 @@ class MyAppUser(HttpUser):
                 sale_id = response.json().get('id')
                 if sale_id:
                     self.sale_ids.append(sale_id)
-                    # Create a review for the new game
                     self.add_review_for_game(sale_id)
             else:
                 response.failure(f"Failed to create sale: {response.status_code}")
@@ -68,7 +67,6 @@ class MyAppUser(HttpUser):
                 if response.status_code != 200:
                     response.failure(f"Failed to delete sale: {response.status_code}")
                 else:
-                    # Also delete associated reviews
                     if sale_id in self.review_ids:
                         for review_id in self.review_ids[sale_id]:
                             self.client.delete(f"/reviews/{review_id}")
@@ -89,7 +87,7 @@ class MyAppUser(HttpUser):
                 with self.client.delete(f"/reviews/{review_id}", catch_response=True) as response:
                     if response.status_code != 200:
                         response.failure(f"Failed to delete review: {response.status_code}")
-                    if not self.review_ids[sale_id]:  # If no more reviews, remove the sale_id entry
+                    if not self.review_ids[sale_id]:
                         del self.review_ids[sale_id]
 
     @task
@@ -108,3 +106,5 @@ class MyAppUser(HttpUser):
         for sale_id, review_ids in self.review_ids.items():
             for review_id in review_ids:
                 self.client.delete(f"/reviews/{review_id}")
+
+print("Locustfile is being loaded")

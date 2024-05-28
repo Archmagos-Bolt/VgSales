@@ -11,6 +11,19 @@ services:
       - ./datasets:/datasets
     ports:
       - "5432:5432"
+  master:
+    image: locustio/locust
+    ports:
+     - "8089:8089"
+    volumes:
+      - ./locust:/locust
+    command: -f /locust/locustfile.py --master -H http://backend:5000
+  
+  worker:
+    image: locustio/locust
+    volumes:
+      - ./locust:/locust
+    command: -f /mnt/locust/locustfile.py --worker --master-host master
 
   backend:
     build: ./backend
@@ -28,7 +41,7 @@ services:
   frontend:
      build: ./frontend
      environment:
-       - REACT_APP_BACKEND_URL=http://backend:5000
+       - REACT_APP_BACKEND_URL=http://localhost:5000
      volumes:
        - ./frontend:/react-docker-example
      ports:
