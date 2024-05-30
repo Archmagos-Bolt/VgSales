@@ -178,7 +178,7 @@ const MainTable = () => {
           )}`
         )
         .then((res) => {
-          console.log("Fetched Reviews:", res.data.data); 
+          //console.log("Fetched Reviews:", res.data.data); 
           if (Array.isArray(res.data.data)) {
             setReviews(res.data.data);
           } else {
@@ -501,49 +501,62 @@ return (
               />
             </Form.Item>
             <Form.Item label="Name">
-              <Input value={selectedGame?.name} onChange={handleInputChange} />
+              <Input 
+                name="name" 
+                value={selectedGame?.name} 
+                onChange={handleInputChange} />
             </Form.Item>
             <Form.Item label="Year">
-              <Input value={selectedGame?.year} onChange={handleInputChange} />
+              <Input 
+                name="year" 
+                value={selectedGame?.year} 
+                onChange={handleInputChange} />
             </Form.Item>
             <Form.Item label="Genre">
-              <Input value={selectedGame?.genre} onChange={handleInputChange} />
+              <Input 
+                name="genre" 
+                value={selectedGame?.genre} 
+                onChange={handleInputChange} />
             </Form.Item>
             <Form.Item label="Publisher">
-              <Input
-                value={selectedGame?.publisher}
-                onChange={handleInputChange}
-              />
+              <Input 
+                name="publisher" 
+                value={selectedGame?.publisher} 
+                onChange={handleInputChange} />
             </Form.Item>
             <Form.Item label="North America Sales">
               <Input
+                name="na_sales"
                 value={selectedGame?.na_sales}
                 onChange={handleInputChange}
               />
             </Form.Item>
             <Form.Item label="Europe Sales">
               <Input
+                name="eu_sales"
                 value={selectedGame?.eu_sales}
                 onChange={handleInputChange}
               />
             </Form.Item>
             <Form.Item label="Japan Sales">
               <Input
+                name="jp_sales"
                 value={selectedGame?.jp_sales}
                 onChange={handleInputChange}
               />
             </Form.Item>
             <Form.Item label="Other Sales">
-              <Input
-                value={selectedGame?.other_sales}
-                onChange={handleInputChange}
+              <Input 
+                name="other_sales" 
+                value={selectedGame?.other_sales} 
+                onChange={handleInputChange} 
               />
             </Form.Item>
             <Form.Item label="Global Sales">
-              <Input
-                value={selectedGame?.global_sales}
-                onChange={handleInputChange}
-              />
+              <Input 
+                name="global_sales" 
+                value={selectedGame?.global_sales} 
+                onChange={handleInputChange} />
             </Form.Item>
           </Form>
         ) : (
